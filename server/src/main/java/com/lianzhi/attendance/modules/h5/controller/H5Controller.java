@@ -148,10 +148,12 @@ public class H5Controller {
         // ---------- 5. 上下班判定（迟到/早退/正常）----------
         // 规则：今天第一次打卡算"上班卡"，之后打卡算"下班卡"
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
-        long todayCount = checkinService.count(
+        List<CheckinRecord> todayRecords = checkinService.list(
                 Wrappers.<CheckinRecord>lambdaQuery()
                         .eq(CheckinRecord::getEmpId, emp.getId())
-                        .ge(CheckinRecord::getCheckinTime, startOfToday));
+                        .ge(CheckinRecord::getSignInTime, startOfToday)
+                        .orderByAsc(CheckinRecord::getSignInTime));
+        long todayCount = todayRecords.size();
         // 查该场所的考勤规则（没配置就用默认 9:00/18:00/宽限10分钟）
         AttendRule rule = ruleService.getByVenueId(venueId);
         LocalTime nowTime = LocalTime.now();
@@ -163,32 +165,45 @@ public class H5Controller {
             if (nowTime.isAfter(rule.getWorkStart().plusMinutes(rule.getLateMinutes()))) {
                 status = "late";
             }
-        } else {
+        } else if (todayCount == 1) {
             punchType = "下班卡";
             // 打卡时间 早于 下班时间 → 早退
             if (nowTime.isBefore(rule.getWorkEnd())) {
                 status = "early";
             }
+        } else {
+            return Result.fail("今日已完成签到和签退，请勿重复打卡");
         }
 
-        // ---------- 6. 写入打卡记录 ----------
-        CheckinRecord record = new CheckinRecord();
-        record.setEmpId(emp.getId());
-        record.setVenueId(venueId);
-        record.setCheckinTime(LocalDateTime.now());
-        record.setCheckinType("photo");     // 现在是拍照打卡；接入虹软后人脸打卡写 face
-        record.setPhotoUrl(photoUrl);
-        record.setLongitude(longitude);
-        record.setLatitude(latitude);
-        record.setDeviceInfo(deviceInfo);
-        record.setStatus(status);
-        checkinService.save(record);
+        // ---------- 6. 写入或更新打卡记录 ----------
+        CheckinRecord record;
+        if (todayCount == 0) {
+            // 第一次打卡：插入新记录（签到）
+            record = new CheckinRecord();
+            record.setEmpId(emp.getId());
+            record.setVenueId(venueId);
+            record.setSignInTime(LocalDateTime.now());
+            record.setCheckinType("photo");
+            record.setPhotoUrl(photoUrl);
+            record.setLongitude(longitude);
+            record.setLatitude(latitude);
+            record.setDeviceInfo(deviceInfo);
+            record.setStatus(status);
+            checkinService.save(record);
+        } else {
+            // 第二次打卡：更新记录（签退）
+            record = todayRecords.get(0);
+            record.setSignOutTime(LocalDateTime.now());
+            record.setSignOutPhoto(photoUrl);
+            record.setStatus(status);
+            checkinService.updateById(record);
+        }
 
         // ---------- 7. 返回结果给手机页面 ----------
         Map<String, Object> data = new HashMap<>();
         data.put("empName", emp.getName());
         data.put("venueName", venue.getName());
-        data.put("time", record.getCheckinTime().toString().replace("T", " ").substring(0, 19));
+        data.put("time", LocalDateTime.now().toString().replace("T", " ").substring(0, 19));
         data.put("status", status);
         data.put("punchType", punchType);
         data.put("distance", (int) distance);
