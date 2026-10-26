@@ -43,7 +43,7 @@ public class Employee {
     /** 人脸特征值（虹软SDK提取，Base64字符串，第2周接入） */
     private String faceFeature;
 
-    /** 1在职 0停用 */
+    /** 1在职 2病假 3事假 0离职 */
     private Integer status;
 
     private LocalDateTime createTime;
