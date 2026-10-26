@@ -1,0 +1,36 @@
+# 后端服务配置
+server:
+  port: 8080
+
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 数据库地址：本地 MySQL，库名 lianzhi_attendance
+    url: jdbc:mysql://localhost:3306/lianzhi_attendance?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 632048       
+    druid:
+      initial-size: 5     # 连接池初始大小
+      max-active: 20
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 5000
+  servlet:
+    multipart:
+      max-file-size: 10MB       # 单个上传文件上限（人脸照片）
+      max-request-size: 20MB
+
+mybatis-plus:
+  configuration:
+    # 控制台打印 SQL 语句，零基础调试必备
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    banner: false
+
+# 自定义配置
+lianzhi:
+  # 照片等文件保存目录：必须用「绝对路径」
+  # 用 ./uploads 这种相对路径时，后端启动目录不确定（可能变成 Tomcat 临时目录），会导致上传报 FileNotFoundException
+  upload-dir: E:/lianzhi-attendance/server/uploads
