@@ -22,14 +22,20 @@ public class CheckinRecord {
 
     private Long venueId;
 
-    /** 打卡时间 */
-    private LocalDateTime checkinTime;
+    /** 签到时间（上班打卡） */
+    private LocalDateTime signInTime;
+
+    /** 签退时间（下班打卡） */
+    private LocalDateTime signOutTime;
 
     /** face人脸识别 / photo拍照 */
     private String checkinType;
 
-    /** 打卡现场照片URL */
+    /** 打卡现场照片URL（签到时拍照） */
     private String photoUrl;
+
+    /** 签退照片URL */
+    private String signOutPhoto;
 
     /** 人脸比对相似度 0-100 */
     private BigDecimal similarity;
@@ -48,10 +54,15 @@ public class CheckinRecord {
 
     private LocalDateTime createTime;
 
+    private LocalDateTime updateTime;
+
     // ---- 非数据库字段：给前端展示用 ----
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private String empName;
 
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private String venueName;
+
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String dept;
 }

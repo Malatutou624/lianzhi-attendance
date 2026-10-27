@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 打卡记录查询接口（管理端）
@@ -33,15 +35,35 @@ public class CheckinController {
             @RequestParam(defaultValue = "10") long size,
             @RequestParam(required = false) Long empId,
             @RequestParam(required = false) Long venueId,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
         Page<CheckinRecord> page = checkinService.page(new Page<>(current, size),
                 Wrappers.<CheckinRecord>lambdaQuery()
                         .eq(empId != null, CheckinRecord::getEmpId, empId)
                         .eq(venueId != null, CheckinRecord::getVenueId, venueId)
-                        .ge(date != null, CheckinRecord::getCheckinTime, date != null ? date.atStartOfDay() : null)
-                        .lt(date != null, CheckinRecord::getCheckinTime, date != null ? date.plusDays(1).atStartOfDay() : null)
-                        .orderByDesc(CheckinRecord::getCheckinTime));
+                        .ge(date != null, CheckinRecord::getSignInTime, date != null ? date.atStartOfDay() : null)
+                        .lt(date != null, CheckinRecord::getSignInTime, date != null ? date.plusDays(1).atStartOfDay() : null)
+                        .orderByDesc(CheckinRecord::getSignInTime));
         checkinService.fillNames(page);
+
+        // 按员工状态筛选（需要在内存中过滤，因为签到/签退是动态判断的）
+        if (status != null && !status.isEmpty()) {
+            List<CheckinRecord> filtered = page.getRecords().stream()
+                    .filter(r -> {
+                        boolean isSignIn = r.getSignInTime() != null;
+                        boolean isSignOut = r.getSignOutTime() != null;
+                        switch (status) {
+                            case "sign_in_normal": return isSignIn && "normal".equals(r.getStatus());
+                            case "sign_in_late": return isSignIn && "late".equals(r.getStatus());
+                            case "sign_out_normal": return isSignOut && "normal".equals(r.getStatus());
+                            case "sign_out_early": return isSignOut && "early".equals(r.getStatus());
+                            default: return true;
+                        }
+                    })
+                    .collect(Collectors.toList());
+            page.setRecords(filtered);
+            page.setTotal(filtered.size());
+        }
         return Result.ok(page);
     }
 }

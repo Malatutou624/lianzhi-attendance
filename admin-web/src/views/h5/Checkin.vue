@@ -154,13 +154,15 @@ function takePhoto() {
 async function onPhotoTaken(e) {
   const file = e.target.files[0]
   if (!file) return
+  // 压缩照片（手机照片太大，超过10MB限制）
+  const compressedFile = await compressImage(file)
   // 本地预览：用 FileReader 读成 base64 显示在页面上
   const reader = new FileReader()
   reader.onload = (ev) => { photoPreview.value = ev.target.result }
-  reader.readAsDataURL(file)
+  reader.readAsDataURL(compressedFile)
   // 上传到服务器，拿到可访问的 URL
   const form = new FormData()
-  form.append('file', file)
+  form.append('file', compressedFile)
   try {
     const res = await axios.post('/api/upload', form)
     if (res.data.code === 200) {
@@ -172,6 +174,40 @@ async function onPhotoTaken(e) {
   } catch (err) {
     alert('照片上传失败：' + err.message)
   }
+}
+
+// 压缩图片：限制最大宽度/高度为 1280px，JPEG 质量 0.7
+function compressImage(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (e) => {
+      const img = new Image()
+      img.src = e.target.result
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        let width = img.width
+        let height = img.height
+        const maxSize = 1280
+        if (width > maxSize || height > maxSize) {
+          if (width > height) {
+            height = Math.round((height * maxSize) / width)
+            width = maxSize
+          } else {
+            width = Math.round((width * maxSize) / height)
+            height = maxSize
+          }
+        }
+        canvas.width = width
+        canvas.height = height
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob((blob) => {
+          resolve(new File([blob], file.name, { type: 'image/jpeg' }))
+        }, 'image/jpeg', 0.7)
+      }
+    }
+  })
 }
 
 // ---------- 提交打卡 ----------

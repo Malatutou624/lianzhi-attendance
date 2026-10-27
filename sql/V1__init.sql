@@ -66,19 +66,22 @@ CREATE TABLE checkin_record (
     id           BIGINT PRIMARY KEY AUTO_INCREMENT,
     emp_id       BIGINT       NOT NULL                COMMENT '员工ID',
     venue_id     BIGINT       DEFAULT NULL            COMMENT '打卡场所ID',
-    checkin_time DATETIME     NOT NULL                COMMENT '打卡时间',
+    sign_in_time  DATETIME    DEFAULT NULL            COMMENT '签到时间（上班打卡）',
+    sign_out_time DATETIME    DEFAULT NULL            COMMENT '签退时间（下班打卡）',
     checkin_type VARCHAR(16)  DEFAULT 'face'          COMMENT 'face人脸识别 / photo拍照',
-    photo_url    VARCHAR(255) DEFAULT NULL            COMMENT '打卡现场照片URL',
+    photo_url    VARCHAR(255) DEFAULT NULL            COMMENT '打卡现场照片URL（签到时拍照）',
+    sign_out_photo VARCHAR(255) DEFAULT NULL          COMMENT '签退照片URL',
     similarity   DECIMAL(5,2) DEFAULT NULL            COMMENT '人脸比对相似度(0-100)',
     liveness     DECIMAL(5,2) DEFAULT NULL            COMMENT '活体检测分数(0-1)',
     longitude    DECIMAL(10,6) DEFAULT NULL           COMMENT '打卡经度',
     latitude     DECIMAL(10,6) DEFAULT NULL           COMMENT '打卡纬度',
-    device_info  VARCHAR(255) DEFAULT NULL            COMMENT '设备信息(UserAgent)',
+    device_info  TEXT         DEFAULT NULL            COMMENT '设备信息(UserAgent，移动端UA可能很长)',
     status       VARCHAR(16)  DEFAULT 'normal'        COMMENT 'normal正常 / late迟到 / early早退',
     create_time  DATETIME     DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_emp_time (emp_id, checkin_time),
-    INDEX idx_time (checkin_time),
-    INDEX idx_venue_time (venue_id, checkin_time)
+    update_time  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_emp_time (emp_id, sign_in_time),
+    INDEX idx_time (sign_in_time),
+    INDEX idx_venue_time (venue_id, sign_in_time)
 ) COMMENT '打卡记录表';
 
 -- ------------------------------------------------------------
