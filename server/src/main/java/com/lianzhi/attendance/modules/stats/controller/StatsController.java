@@ -20,9 +20,6 @@ import java.time.YearMonth;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * 数据看板统计接口
- */
 @RestController
 @RequestMapping("/stats")
 public class StatsController {
@@ -36,6 +33,7 @@ public class StatsController {
     @Autowired
     private VenueService venueService;
 
+    /** 今日概览 */
     @GetMapping("/today")
     public Result<Map<String, Object>> today() {
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
@@ -43,13 +41,10 @@ public class StatsController {
         long empTotal = employeeService.count(
                 Wrappers.<Employee>lambdaQuery().eq(Employee::getStatus, 1));
 
-        // 今日打卡记录（每人每天一条）
         List<CheckinRecord> todayRecords = checkinService.list(
                 Wrappers.<CheckinRecord>lambdaQuery().ge(CheckinRecord::getSignInTime, startOfToday));
 
-        // 打卡人数
         long checkedCount = todayRecords.size();
-        // 迟到人数
         long lateCount = todayRecords.stream().filter(r -> "late".equals(r.getStatus())).count();
 
         Map<String, Object> data = new HashMap<>();
@@ -62,7 +57,7 @@ public class StatsController {
 
     /**
      * 获取各类人员列表
-     * type: active(在职) / checked(今日打卡) / late(今日迟到) / unchecked(未打卡)
+     * type: active/checked/late/unchecked
      */
     @GetMapping("/people")
     public Result<List<Map<String, Object>>> people(@RequestParam String type) {
@@ -111,9 +106,7 @@ public class StatsController {
         return Result.ok(result);
     }
 
-    /**
-     * 按部门统计工作时长
-     */
+    /** 按部门统计工作时长 */
     @GetMapping("/workHours")
     public Result<List<Map<String, Object>>> workHours(@RequestParam(required = false) String month) {
         YearMonth yearMonth = (month != null && !month.isEmpty())

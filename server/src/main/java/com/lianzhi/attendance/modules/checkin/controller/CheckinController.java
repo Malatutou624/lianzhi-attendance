@@ -16,10 +16,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * 打卡记录查询接口（管理端）
- * GET /checkin/page
- */
 @RestController
 @RequestMapping("/checkin")
 public class CheckinController {
@@ -44,7 +40,7 @@ public class CheckinController {
                         .orderByDesc(CheckinRecord::getSignInTime));
         checkinService.fillNames(page);
 
-        // 按员工状态筛选
+        // 按员工状态筛选（内存中过滤，因为签到/签退是动态判断的）
         if (status != null && !status.isEmpty()) {
             List<CheckinRecord> filtered = page.getRecords().stream()
                     .filter(r -> {

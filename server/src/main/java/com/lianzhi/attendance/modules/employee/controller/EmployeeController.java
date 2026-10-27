@@ -27,11 +27,17 @@ public class EmployeeController {
     public Result<Page<Employee>> page(@RequestParam(defaultValue = "1") long current,
                                        @RequestParam(defaultValue = "10") long size,
                                        @RequestParam(required = false) String name,
-                                       @RequestParam(required = false) Long venueId) {
+                                       @RequestParam(required = false) Long venueId,
+                                       @RequestParam(required = false) String dept,
+                                       @RequestParam(required = false) String position,
+                                       @RequestParam(required = false) Integer status) {
         Page<Employee> page = employeeService.page(new Page<>(current, size),
                 Wrappers.<Employee>lambdaQuery()
                         .like(StringUtils.isNotBlank(name), Employee::getName, name)
                         .eq(venueId != null, Employee::getVenueId, venueId)
+                        .like(StringUtils.isNotBlank(dept), Employee::getDept, dept)
+                        .like(StringUtils.isNotBlank(position), Employee::getPosition, position)
+                        .eq(status != null, Employee::getStatus, status)
                         .orderByDesc(Employee::getId));
         return Result.ok(page);
     }

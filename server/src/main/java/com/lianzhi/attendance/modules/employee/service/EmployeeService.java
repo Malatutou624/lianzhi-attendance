@@ -17,7 +17,7 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, Employee> {
     private CheckinRecordMapper checkinRecordMapper;
 
     /**
-     * 删除员工，同时删除其所有打卡记录
+     * 删除员工，同时删除其所有打卡记录（级联删除）
      */
     @Transactional(rollbackFor = Exception.class)
     public boolean removeByIdWithRecords(Long id) {
