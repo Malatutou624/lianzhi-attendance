@@ -54,7 +54,7 @@ CREATE TABLE employee (
     venue_id      BIGINT       DEFAULT NULL           COMMENT '所属办公场所ID',
     face_photo    VARCHAR(255) DEFAULT NULL           COMMENT '人脸照片URL',
     face_feature  TEXT         DEFAULT NULL           COMMENT '人脸特征值（虹软SDK提取，Base64）',
-    status        TINYINT      NOT NULL DEFAULT 1     COMMENT '1在职 0停用',
+    status        TINYINT      NOT NULL DEFAULT 1     COMMENT '1在职 2病假 3事假 0离职',
     create_time   DATETIME     DEFAULT CURRENT_TIMESTAMP,
     update_time   DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) COMMENT '员工表';
