@@ -37,11 +37,14 @@ public class CheckinService extends ServiceImpl<CheckinRecordMapper, CheckinReco
         List<Long> venueIds = records.stream().map(CheckinRecord::getVenueId).distinct().collect(Collectors.toList());
         Map<Long, String> empMap = employeeService.listByIds(empIds).stream()
                 .collect(Collectors.toMap(Employee::getId, Employee::getName));
+        Map<Long, String> deptMap = employeeService.listByIds(empIds).stream()
+                .collect(Collectors.toMap(Employee::getId, Employee::getDept));
         Map<Long, String> venueMap = venueService.listByIds(venueIds).stream()
                 .collect(Collectors.toMap(Venue::getId, Venue::getName));
         for (CheckinRecord r : records) {
             r.setEmpName(empMap.get(r.getEmpId()));
             r.setVenueName(venueMap.get(r.getVenueId()));
+            r.setDept(deptMap.get(r.getEmpId()));
         }
     }
 }
