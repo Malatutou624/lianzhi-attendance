@@ -65,4 +65,16 @@ public class EmployeeController {
         employeeService.removeByIdWithRecords(id);
         return Result.ok();
     }
+
+    /** H5 员工端：按工号查询员工（不需要登录） */
+    @GetMapping("/byEmpNo")
+    public Result<Employee> byEmpNo(@RequestParam String empNo) {
+        Employee e = employeeService.getOne(
+                Wrappers.<Employee>lambdaQuery().eq(Employee::getEmpNo, empNo));
+        if (e == null) return Result.fail("工号不存在");
+        // 不返回人脸特征等敏感字段
+        e.setFaceFeature(null);
+        e.setIdCard(null);
+        return Result.ok(e);
+    }
 }

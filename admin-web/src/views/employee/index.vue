@@ -2,7 +2,9 @@
   <div>
     <div class="toolbar">
       <el-input v-model="query.name" placeholder="按姓名搜索" style="width: 200px" clearable @change="onQuery" />
-      <el-input v-model="query.dept" placeholder="按部门搜索" style="width: 180px" clearable @change="onQuery" />
+      <el-select v-model="query.dept" placeholder="按部门筛选" clearable style="width: 180px" @change="onQuery">
+        <el-option v-for="d in deptOptions" :key="d" :label="d" :value="d" />
+      </el-select>
       <el-input v-model="query.position" placeholder="按职位搜索" style="width: 180px" clearable @change="onQuery" />
       <el-select v-model="query.status" placeholder="按状态筛选" clearable style="width: 140px" @change="onQuery">
         <el-option v-for="s in statusOptions" :key="s.value" :label="s.label" :value="s.value" />
@@ -70,7 +72,9 @@
           <el-input v-model="form.idCard" />
         </el-form-item>
         <el-form-item label="部门" prop="dept">
-          <el-input v-model="form.dept" />
+          <el-select v-model="form.dept" style="width: 100%" placeholder="请选择">
+            <el-option v-for="d in deptOptions" :key="d" :label="d" :value="d" />
+          </el-select>
         </el-form-item>
         <el-form-item label="职位" prop="position">
           <el-input v-model="form.position" />
@@ -103,6 +107,7 @@ const tableData = ref([])
 const total = ref(0)
 const loading = ref(false)
 const venueList = ref([])
+const deptOptions = ['人力资源部', '研发中心', '产品设计部', '市场运营部', '财务部', '客户成功部']
 const query = reactive({ current: 1, size: 10, name: '', venueId: null, dept: '', position: '', status: null })
 
 const statusOptions = [

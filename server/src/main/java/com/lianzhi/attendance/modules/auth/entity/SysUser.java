@@ -27,6 +27,12 @@ public class SysUser {
 
     private String realName;
 
+    private String phone;
+
+    private String email;
+
+    private String avatar;
+
     private String role;
 
     private Integer status;

@@ -5,17 +5,14 @@
     <div class="header">
       <div class="title">{{ venue ? venue.name : '加载中...' }}</div>
       <div class="subtitle" v-if="venue">{{ venue.address || '联智考勤打卡点' }}</div>
+      <div class="emp-badge" v-if="emp">👤 {{ emp.name }}（{{ emp.empNo }}）· {{ emp.dept || '' }}</div>
+      <div class="emp-badge warn" v-else>⚠️ 未绑定员工，请先采集</div>
     </div>
 
     <!-- 当前时间（每秒刷新） -->
     <div class="clock">
       <div class="time">{{ nowTime }}</div>
       <div class="date">{{ nowDate }}</div>
-    </div>
-
-    <!-- 工号输入：打过一次卡后会记住，不用再输 -->
-    <div class="form">
-      <input v-model="empNo" class="input" placeholder="请输入工号" maxlength="20" />
     </div>
 
     <!-- 拍照区：用label包裹input，点击更可靠 -->
@@ -54,23 +51,24 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-import axios from 'axios'
+import { useRoute, useRouter } from 'vue-router'
+import request from '../../api/request'
 import { wgs84ToGcj02 } from '../../utils/coordTransform'
 
 // ---------- 页面数据 ----------
 const route = useRoute()
-const venueId = route.query.venueId        // 从二维码链接里取场所ID
-const venue = ref(null)                    // 场所信息
-const empNo = ref(localStorage.getItem('h5_empNo') || '')  // 记住上次输入的工号
-const photoPreview = ref('')               // 照片预览图（base64）
-const photoUrl = ref('')                   // 照片上传到服务器后的 URL
+const router = useRouter()
+const venueId = route.query.venueId
+const venue = ref(null)
+const emp = ref(null)
+const photoPreview = ref('')
+const photoUrl = ref('')
 const locText = ref('正在获取定位...')
 const locOk = ref(false)
 const longitude = ref(null)
 const latitude = ref(null)
 const submitting = ref(false)
-const result = ref(null)                   // 打卡成功后的结果
+const result = ref(null)
 const fileInput = ref(null)
 
 // ---------- 时钟：每秒刷新 ----------
@@ -83,22 +81,32 @@ function tick() {
   nowDate.value = `${d.getMonth() + 1}月${d.getDate()}日 星期${'日一二三四五六'[d.getDay()]}`
 }
 
-// ---------- 打开页面时：加载场所信息 + 启动时钟 + 请求定位 ----------
+// ---------- 打开页面时：加载场所 + 绑定员工 + 定位 ----------
 onMounted(async () => {
   tick()
   timer = setInterval(tick, 1000)
-  // 加载场所信息
+  // 加载场所
   try {
-    const res = await axios.get('/api/h5/venue/' + venueId)
-    if (res.data.code === 200) {
-      venue.value = res.data.data
-    } else {
-      alert(res.data.msg)
-    }
+    const res = await request.get('/h5/venue/' + venueId)
+    venue.value = res.data
   } catch (e) {
     alert('场所加载失败，请确认二维码链接是否正确')
   }
-  // 请求浏览器定位
+  // 加载绑定员工
+  try {
+    const res = await request.get('/h5/auth/info')
+    if (res.data?.employee) {
+      emp.value = res.data.employee
+    } else {
+      alert('请先完成员工信息采集')
+      router.replace('/h5/collect?venueId=' + venueId)
+      return
+    }
+  } catch (e) {
+    alert('请先登录')
+    router.replace({ path: '/h5/login', query: { redirect: '/h5/checkin?venueId=' + venueId } })
+    return
+  }
   getLocation()
 })
 onUnmounted(() => clearInterval(timer))
@@ -162,18 +170,14 @@ async function onPhotoTaken(e) {
   reader.readAsDataURL(compressedFile)
   // 上传到服务器，拿到可访问的 URL
   const form = new FormData()
-  form.append('file', compressedFile)
-  try {
-    const res = await axios.post('/api/upload', form)
-    if (res.data.code === 200) {
-      photoUrl.value = res.data.data
-    } else {
-      // 后端返回失败时必须提示，避免照片没传上去却没有任何反馈
-      alert('照片上传失败：' + res.data.msg)
-    }
-  } catch (err) {
-    alert('照片上传失败：' + err.message)
-  }
+// 压缩后再上传
+form.append('file', compressedFile)
+try {
+  const res = await request.post('/upload', form)
+  photoUrl.value = res.data
+} catch (err) {
+  alert('照片上传失败：' + (err?.msg || err?.message))
+}
 }
 
 // 压缩图片：限制最大宽度/高度为 1280px，JPEG 质量 0.7
@@ -212,26 +216,20 @@ function compressImage(file) {
 
 // ---------- 提交打卡 ----------
 async function doCheckin() {
-  if (!empNo.value.trim()) { alert('请输入工号'); return }
+  if (!emp.value) { alert('请先完成员工信息采集'); return }
   if (!locOk.value) { alert('还没有定位成功'); return }
   submitting.value = true
   try {
-    const res = await axios.post('/api/h5/checkin', {
+    const res = await request.post('/h5/checkin', {
       venueId: Number(venueId),
-      empNo: empNo.value.trim(),
       longitude: longitude.value,
       latitude: latitude.value,
       photoUrl: photoUrl.value,
       deviceInfo: navigator.userAgent
     })
-    if (res.data.code === 200) {
-      result.value = res.data.data                       // 弹出成功卡片
-      localStorage.setItem('h5_empNo', empNo.value.trim()) // 记住工号，下次免输
-    } else {
-      alert(res.data.msg)                                // 失败原因直接弹出（超范围/重复打卡等）
-    }
+    result.value = res.data
   } catch (err) {
-    alert('打卡失败：' + err.message)
+    alert(err?.msg || '打卡失败：' + (err?.message || '未知错误'))
   } finally {
     submitting.value = false
   }
@@ -265,4 +263,6 @@ async function doCheckin() {
 .result-title { font-size: 20px; font-weight: bold; margin: 10px 0; }
 .result-line { font-size: 14px; color: #4a5568; margin-top: 6px; }
 .result-close { font-size: 12px; color: #a0aec0; margin-top: 16px; }
+.emp-badge { margin-top: 6px; font-size: 12px; opacity: 0.9; }
+.emp-badge.warn { color: #fbd38d; }
 </style>

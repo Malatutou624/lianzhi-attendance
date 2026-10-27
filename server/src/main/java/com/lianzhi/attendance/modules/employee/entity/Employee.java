@@ -46,6 +46,12 @@ public class Employee {
     /** 1在职 2病假 3事假 0离职 */
     private Integer status;
 
+    /** 直属主管员工ID */
+    private Long leaderId;
+
+    /** 1普通员工 2部门主管 */
+    private Integer role;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

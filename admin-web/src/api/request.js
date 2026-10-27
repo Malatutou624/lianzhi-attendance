@@ -1,23 +1,31 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
-// axios 实例：统一加 baseURL、token 请求头、错误处理
-// 所有页面 import request from '@/api/request' 后直接用，不用每个页面重复写这些逻辑
+/**
+ * 统一 axios 实例：
+ * - 管理端：localStorage['token']      → 后端拦截器识别为管理端登录
+ * - H5 员工端：localStorage['h5Token'] → 后端拦截器识别为 H5 登录
+ * 后端拦截器按 URI 前缀区分：/api/** 用管理端 token，/h5/** 用 h5 token
+ */
 const request = axios.create({
-  baseURL: '/api',   // 经 vite 代理转发到后端 8080
-  timeout: 10000
+  baseURL: '/api',
+  timeout: 15000
 })
 
-// 请求拦截器：每次请求自动带上 token
 request.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = token
+  // 自动带 token：当前页面是 H5 页面，或者 URL 以 /h5/ 开头 → 带 h5Token；否则带管理端 token
+  const uri = config.url || ''
+  const isH5Page = typeof window !== 'undefined' && window.location.pathname.startsWith('/h5')
+  if (uri.startsWith('/h5/') || isH5Page) {
+    const h5Token = localStorage.getItem('h5Token')
+    if (h5Token) config.headers.Authorization = h5Token
+  } else {
+    const token = localStorage.getItem('token')
+    if (token) config.headers.Authorization = token
   }
   return config
 })
 
-// 响应拦截器：统一处理错误
 request.interceptors.response.use(
   (res) => {
     const data = res.data
@@ -25,15 +33,25 @@ request.interceptors.response.use(
       ElMessage.error(data.msg || '请求失败')
       return Promise.reject(data)
     }
-    return data   // 页面里拿到的直接是 {code,msg,data}
+    return data
   },
   (err) => {
     if (err.response && err.response.status === 401) {
-      ElMessage.error('登录已过期，请重新登录')
-      localStorage.removeItem('token')
-      window.location.href = '/login'
+      const uri = err.config?.url || ''
+      // 判断依据：请求 URL 以 /h5/ 开头 → H5；或当前页面路径以 /h5/ 开头（H5 页面调管理端接口也应该跳 H5 登录）
+      const isH5Req = uri.startsWith('/h5/')
+      const isH5Page = window.location.pathname.startsWith('/h5')
+      if (isH5Req || isH5Page) {
+        localStorage.removeItem('h5Token')
+        ElMessage.error('请先登录')
+        window.location.href = '/h5/login'
+      } else {
+        localStorage.removeItem('token')
+        ElMessage.error('登录已过期，请重新登录')
+        window.location.href = '/login'
+      }
     } else {
-      ElMessage.error('网络错误：' + err.message)
+      ElMessage.error('网络错误：' + (err.message || '未知'))
     }
     return Promise.reject(err)
   }

@@ -15,6 +15,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       },
+      // POST /upload（文件上传接口，单数）→ 后端
+      '/upload': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
       // 上传的照片直接走后端，不摘前缀
       '/uploads': {
         target: 'http://localhost:8080',
