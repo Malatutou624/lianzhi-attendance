@@ -22,7 +22,10 @@
       </div>
       <div class="form-item">
         <label>部门</label>
-        <input v-model="form.dept" class="input" placeholder="选填" />
+        <select v-model="form.dept" class="input">
+          <option value="" disabled>请选择</option>
+          <option v-for="d in deptOptions" :key="d" :value="d">{{ d }}</option>
+        </select>
       </div>
       <div class="form-item">
         <label>职位</label>
@@ -68,32 +71,42 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import axios from 'axios'
+import { useRoute, useRouter } from 'vue-router'
+import request from '../../api/request'
 
 // ---------- 页面数据 ----------
 const route = useRoute()
+const router = useRouter()
 const venues = ref([])                 // 场所下拉列表
-const form = ref({ name: '', empNo: '', phone: '', dept: '', venueId: null, gender: 1 })
+const deptOptions = ['人力资源部', '研发中心', '产品设计部', '市场运营部', '财务部', '客户成功部']
+const form = ref({ name: '', empNo: '', phone: '', dept: '', position: '', venueId: null, gender: 1 })
 const photoPreview = ref('')
-const facePhoto = ref('')              // 上传后的人脸照片URL
+const facePhoto = ref('')
 const submitting = ref(false)
 const done = ref(false)
 const doneName = ref('')
 const fileInput = ref(null)
 
-// 打开页面时加载场所列表
+// 打开页面时：检查是否已绑定 + 加载场所列表
 onMounted(async () => {
+  // 检查账号是否已绑定员工（已绑定=已采集过）
   try {
-    const res = await axios.get('/api/h5/venue/list')
-    if (res.data.code === 200) {
-      venues.value = res.data.data
-      // 从入口页跳进来时带着 venueId，自动选中该场所，员工不用再选
-      const qid = Number(route.query.venueId)
-      if (qid) {
-        form.value.venueId = qid
-      }
+    const infoRes = await request.get('/h5/auth/info')
+    if (infoRes.data?.empId) {
+      alert('本账号已完成员工信息采集，如需修改请联系管理员')
+      router.replace('/h5/home')
+      return
     }
+  } catch (e) {
+    // 没登录（路由守卫应该拦了），或 token 失效
+  }
+
+  // 加载场所
+  try {
+    const res = await request.get('/h5/venue/list')
+    venues.value = res.data
+    const qid = Number(route.query.venueId)
+    if (qid) form.value.venueId = qid
   } catch (e) {
     alert('场所列表加载失败')
   }
@@ -114,15 +127,10 @@ async function onPhotoTaken(e) {
   const formData = new FormData()
   formData.append('file', compressedFile)
   try {
-    const res = await axios.post('/api/upload', formData)
-    if (res.data.code === 200) {
-      facePhoto.value = res.data.data
-    } else {
-      // 后端返回失败（例如目录写不进去）时必须提示，否则照片没传上去用户也不知道
-      alert('照片上传失败：' + res.data.msg)
-    }
+    const res = await request.post('/upload', formData)
+    facePhoto.value = res.data
   } catch (err) {
-    alert('照片上传失败：' + err.message)
+    alert('照片上传失败：' + (err?.msg || err?.message))
   }
 }
 
@@ -168,18 +176,14 @@ async function submit() {
   if (!facePhoto.value) { alert('请拍摄人脸照片'); return }
   submitting.value = true
   try {
-    const res = await axios.post('/api/h5/collect', {
+    const res = await request.post('/h5/collect', {
       ...form.value,
       facePhoto: facePhoto.value
     })
-    if (res.data.code === 200) {
-      doneName.value = res.data.data.name
-      done.value = true
-    } else {
-      alert(res.data.msg)   // 例如"工号已采集过"
-    }
+    doneName.value = res.data.name
+    done.value = true
   } catch (err) {
-    alert('提交失败：' + err.message)
+    alert(err?.msg || '提交失败')
   } finally {
     submitting.value = false
   }

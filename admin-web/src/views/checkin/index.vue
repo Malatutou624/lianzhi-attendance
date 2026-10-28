@@ -5,6 +5,9 @@
       <el-select v-model="query.venueId" placeholder="按场所筛选" clearable style="width: 180px" @change="loadData">
         <el-option v-for="v in venueList" :key="v.id" :label="v.name" :value="v.id" />
       </el-select>
+      <el-select v-model="query.dept" placeholder="按部门筛选" clearable style="width: 160px" @change="loadData">
+        <el-option v-for="d in deptOptions" :key="d" :label="d" :value="d" />
+      </el-select>
       <el-select v-model="query.status" placeholder="员工状态" clearable style="width: 160px" @change="loadData">
         <el-option label="正常签到" value="sign_in_normal" />
         <el-option label="正常签退" value="sign_out_normal" />
@@ -71,7 +74,8 @@ const tableData = ref([])
 const total = ref(0)
 const loading = ref(false)
 const venueList = ref([])
-const query = reactive({ current: 1, size: 10, date: null, venueId: null, status: null })
+const deptOptions = ['人力资源部', '研发中心', '产品设计部', '市场运营部', '财务部', '客户成功部']
+const query = reactive({ current: 1, size: 10, date: null, venueId: null, dept: null, status: null })
 
 async function loadData() {
   loading.value = true

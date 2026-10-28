@@ -2,6 +2,7 @@ package com.lianzhi.attendance.modules.h5.controller;
 
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lianzhi.attendance.common.Result;
 import com.lianzhi.attendance.modules.checkin.entity.CheckinRecord;
 import com.lianzhi.attendance.modules.checkin.service.CheckinService;
@@ -11,6 +12,8 @@ import com.lianzhi.attendance.modules.rule.entity.AttendRule;
 import com.lianzhi.attendance.modules.rule.service.RuleService;
 import com.lianzhi.attendance.modules.venue.entity.Venue;
 import com.lianzhi.attendance.modules.venue.service.VenueService;
+import com.lianzhi.attendance.modules.h5.entity.H5Account;
+import com.lianzhi.attendance.modules.h5.mapper.H5AccountMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,15 +21,19 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
+
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.YearMonth;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -54,6 +61,9 @@ public class H5Controller {
     @Autowired
     private RuleService ruleService;
 
+    @Autowired
+    private H5AccountMapper accountMapper;
+
     /** Redis 操作工具：用来做"60秒内防重复打卡"的锁 */
     @Autowired
     private StringRedisTemplate redisTemplate;
@@ -77,6 +87,141 @@ public class H5Controller {
         return Result.ok(venue);
     }
 
+    /** 我的打卡记录列表（H5 端用，自动根据 h5AccountId 取绑定员工） */
+    @GetMapping("/checkin/list")
+    public Result<Page<CheckinRecord>> myCheckins(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "1") long current,
+            @RequestParam(defaultValue = "20") long size) {
+        Long accountId = (Long) request.getAttribute("h5AccountId");
+        H5Account acc = accountMapper.selectById(accountId);
+        if (acc == null || acc.getEmpId() == null) {
+            return Result.fail("请先完成员工信息采集");
+        }
+        Page<CheckinRecord> page = checkinService.page(new Page<>(current, size),
+                Wrappers.<CheckinRecord>lambdaQuery()
+                        .eq(CheckinRecord::getEmpId, acc.getEmpId())
+                        .orderByDesc(CheckinRecord::getSignInTime));
+        return Result.ok(page);
+    }
+
+    /**
+     * H5 月度考勤汇总（自动根据 token 取绑定员工）
+     * GET /h5/stats?month=2026-10  不传 month 默认当月
+     * 返回：attendDays 出勤天数 / lateCount 迟到次数 / earlyCount 早退次数
+     *       totalHours 累计工时 / workDays 应出勤工作日数 / absentCount 缺勤天数
+     */
+    @GetMapping("/stats")
+    public Result<Map<String, Object>> monthStats(
+            HttpServletRequest request,
+            @RequestParam(required = false) String month) {
+        Long empId = resolveEmpId(request);
+        if (empId == null) return Result.fail("请先登录并完成员工信息采集");
+
+        YearMonth ym = (month != null && !month.isEmpty()) ? YearMonth.parse(month) : YearMonth.now();
+        LocalDateTime start = ym.atDay(1).atStartOfDay();
+        LocalDateTime end = ym.plusMonths(1).atDay(1).atStartOfDay();
+
+        List<CheckinRecord> records = checkinService.list(
+                Wrappers.<CheckinRecord>lambdaQuery()
+                        .eq(CheckinRecord::getEmpId, empId)
+                        .ge(CheckinRecord::getSignInTime, start)
+                        .lt(CheckinRecord::getSignInTime, end));
+
+        // 出勤天数 = 有签到的记录数
+        long attendDays = records.stream().filter(r -> r.getSignInTime() != null).count();
+        long lateCount = records.stream().filter(r -> "late".equals(r.getStatus())).count();
+        long earlyCount = records.stream().filter(r -> "early".equals(r.getStatus())).count();
+
+        // 累计工时 = 每条记录 signIn→signOut 的分钟数之和 / 60
+        double totalHours = 0;
+        for (CheckinRecord r : records) {
+            if (r.getSignInTime() != null && r.getSignOutTime() != null) {
+                long mins = Duration.between(r.getSignInTime(), r.getSignOutTime()).toMinutes();
+                totalHours += mins / 60.0;
+            }
+        }
+        BigDecimal hoursBd = BigDecimal.valueOf(totalHours).setScale(2, RoundingMode.HALF_UP);
+
+        // 应出勤工作日数 = 当月周一~周五的天数
+        int workDays = 0;
+        for (int d = 1; d <= ym.lengthOfMonth(); d++) {
+            LocalDate date = ym.atDay(d);
+            int dow = date.getDayOfWeek().getValue(); // 1=Monday, 7=Sunday
+            if (dow <= 5) workDays++;
+        }
+        long absentCount = Math.max(workDays - attendDays, 0);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("attendDays", attendDays);
+        data.put("lateCount", lateCount);
+        data.put("earlyCount", earlyCount);
+        data.put("totalHours", hoursBd);
+        data.put("workDays", workDays);
+        data.put("absentCount", absentCount);
+        data.put("yearMonth", ym.toString());
+        return Result.ok(data);
+    }
+
+    /**
+     * H5 月度打卡明细（日历用，自动根据 token 取绑定员工）
+     * GET /h5/checkin/month?month=2026-10  不传默认当月
+     * 返回 records 列表，每条带 workHours 字段（BigDecimal，后端算好）
+     */
+    @GetMapping("/checkin/month")
+    public Result<List<Map<String, Object>>> monthCheckins(
+            HttpServletRequest request,
+            @RequestParam(required = false) String month) {
+        Long empId = resolveEmpId(request);
+        if (empId == null) return Result.fail("请先登录并完成员工信息采集");
+
+        YearMonth ym = (month != null && !month.isEmpty()) ? YearMonth.parse(month) : YearMonth.now();
+        LocalDateTime start = ym.atDay(1).atStartOfDay();
+        LocalDateTime end = ym.plusMonths(1).atDay(1).atStartOfDay();
+
+        List<CheckinRecord> records = checkinService.list(
+                Wrappers.<CheckinRecord>lambdaQuery()
+                        .eq(CheckinRecord::getEmpId, empId)
+                        .ge(CheckinRecord::getSignInTime, start)
+                        .lt(CheckinRecord::getSignInTime, end)
+                        .orderByAsc(CheckinRecord::getSignInTime));
+
+        // 预加载 venue 名称
+        List<Long> venueIds = records.stream().map(CheckinRecord::getVenueId)
+                .filter(Objects::nonNull).distinct().collect(java.util.stream.Collectors.toList());
+        Map<Long, String> venueMap = venueIds.isEmpty() ? Collections.emptyMap()
+                : venueService.listByIds(venueIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(Venue::getId, Venue::getName));
+
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (CheckinRecord r : records) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", r.getId());
+            item.put("signInTime", r.getSignInTime() == null ? null : r.getSignInTime().toString());
+            item.put("signOutTime", r.getSignOutTime() == null ? null : r.getSignOutTime().toString());
+            item.put("status", r.getStatus());
+            item.put("venueName", venueMap.get(r.getVenueId()));
+
+            // 工时（分钟精度，保留 2 位小数）
+            BigDecimal workHours = BigDecimal.ZERO;
+            if (r.getSignInTime() != null && r.getSignOutTime() != null) {
+                long mins = Duration.between(r.getSignInTime(), r.getSignOutTime()).toMinutes();
+                workHours = BigDecimal.valueOf(mins).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+            }
+            item.put("workHours", workHours);
+            out.add(item);
+        }
+        return Result.ok(out);
+    }
+
+    /** 从 request 中解析绑定的员工 ID（H5 token → h5AccountId → empId） */
+    private Long resolveEmpId(HttpServletRequest request) {
+        Long accountId = (Long) request.getAttribute("h5AccountId");
+        if (accountId == null) return null;
+        H5Account acc = accountMapper.selectById(accountId);
+        return acc == null ? null : acc.getEmpId();
+    }
+
     /**
      * 打卡接口（本系统最核心的接口）
      * 前端传 JSON：{venueId, empNo, longitude, latitude, photoUrl, deviceInfo}
@@ -90,28 +235,28 @@ public class H5Controller {
      *   6. 写入打卡记录表
      */
     @PostMapping("/checkin")
-    public Result<Map<String, Object>> checkin(@RequestBody Map<String, Object> params) {
-        // ---------- 0. 取参数 ----------
+    public Result<Map<String, Object>> checkin(@RequestBody Map<String, Object> params,
+                                               HttpServletRequest request) {
+        // ---------- 0. 校验登录 + 绑定 ----------
+        Long accountId = (Long) request.getAttribute("h5AccountId");
+        H5Account acc = accountMapper.selectById(accountId);
+        if (acc == null || acc.getEmpId() == null) {
+            return Result.fail("请先完成员工信息采集");
+        }
+        // 强制用绑定的员工，防止前端篡改 empNo
+        Employee emp = employeeService.getById(acc.getEmpId());
+        if (emp == null) return Result.fail("绑定的员工信息不存在");
+        if (emp.getStatus() != 1) return Result.fail("该员工已停用，请联系管理员");
+
         Long venueId = params.get("venueId") == null ? null : Long.valueOf(params.get("venueId").toString());
-        String empNo = params.get("empNo") == null ? null : params.get("empNo").toString().trim();
         BigDecimal longitude = params.get("longitude") == null ? null : new BigDecimal(params.get("longitude").toString());
         BigDecimal latitude = params.get("latitude") == null ? null : new BigDecimal(params.get("latitude").toString());
         String photoUrl = params.get("photoUrl") == null ? null : params.get("photoUrl").toString();
         String deviceInfo = params.get("deviceInfo") == null ? null : params.get("deviceInfo").toString();
 
-        if (venueId == null || StringUtils.isBlank(empNo)) {
-            return Result.fail("缺少必要参数：场所或工号");
-        }
+        if (venueId == null) return Result.fail("缺少必要参数：场所");
 
-        // ---------- 1. 校验员工 ----------
-        Employee emp = employeeService.getOne(
-                Wrappers.<Employee>lambdaQuery().eq(Employee::getEmpNo, empNo));
-        if (emp == null) {
-            return Result.fail("工号不存在：" + empNo + "，请先扫码完成信息采集");
-        }
-        if (emp.getStatus() != 1) {
-            return Result.fail("该员工已停用，请联系管理员");
-        }
+        // ---------- 1-2 已由上面绑定逻辑处理 ----------
 
         // ---------- 2. 校验场所 ----------
         Venue venue = venueService.getById(venueId);
@@ -146,7 +291,7 @@ public class H5Controller {
         }
 
         // ---------- 5. 上下班判定（迟到/早退/正常）----------
-        // 规则：今天第一次打卡算"上班卡"，之后打卡算"下班卡"
+        // 规则：今天第一次打卡算"上班卡"，第二次打卡算"下班卡"
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
         List<CheckinRecord> todayRecords = checkinService.list(
                 Wrappers.<CheckinRecord>lambdaQuery()
@@ -214,26 +359,41 @@ public class H5Controller {
 
     /**
      * 员工信息采集：员工扫场所码后，填写 工号/姓名/手机号/部门 + 上传人脸照片
-     * 前端传 JSON：{empNo, name, phone, gender, dept, venueId, facePhoto}
+     * 要求：一个账号只能采集一次，采集后账号自动绑定该员工
      */
     @PostMapping("/collect")
-    public Result<Map<String, Object>> collect(@RequestBody Employee employee) {
-        // 必填校验：工号和姓名必须有
+    public Result<Map<String, Object>> collect(@RequestBody Employee employee,
+                                                HttpServletRequest request) {
+        // ---------- 0. 校验账号 ----------
+        Long accountId = (Long) request.getAttribute("h5AccountId");
+        H5Account acc = accountMapper.selectById(accountId);
+        if (acc == null) return Result.fail("请先登录");
+        if (acc.getEmpId() != null) {
+            return Result.fail("本账号已完成过员工信息采集，如需修改请联系管理员");
+        }
+
+        // 必填校验
         if (StringUtils.isBlank(employee.getEmpNo()) || StringUtils.isBlank(employee.getName())) {
             return Result.fail("工号和姓名不能为空");
         }
-        // 工号唯一校验：同一个工号不能采集两次
+        // 工号唯一校验
         long count = employeeService.count(
                 Wrappers.<Employee>lambdaQuery().eq(Employee::getEmpNo, employee.getEmpNo()));
         if (count > 0) {
-            return Result.fail("工号 " + employee.getEmpNo() + " 已采集过，如需修改请联系管理员");
+            return Result.fail("工号 " + employee.getEmpNo() + " 已被其他账号采集过，请联系管理员");
         }
-        // 默认在职
+
+        // 默认在职，保存员工
         employee.setStatus(1);
         employeeService.save(employee);
 
+        // 账号绑定该员工（唯一绑定）
+        acc.setEmpId(employee.getId());
+        accountMapper.updateById(acc);
+
         Map<String, Object> data = new HashMap<>();
         data.put("id", employee.getId());
+        data.put("empNo", employee.getEmpNo());
         data.put("name", employee.getName());
         return Result.ok(data);
     }

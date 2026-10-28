@@ -30,17 +30,17 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowCredentials(true);
     }
 
-    /** 登录拦截：除了登录接口、H5接口、上传文件、二维码图片外，都要带 token */
+    /** 登录拦截：只放行纯公开接口，其他都要 token */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns(
-                        "/auth/login",   // 登录接口
-                        "/h5/**",        // H5 员工端接口（员工没有管理端账号）
-                        "/upload",       // 上传照片（H5 打卡页/采集页拍照上传，无 token）
-                        "/uploads/**",   // 上传的照片
-                        "/qrcode/**",    // 二维码图片（<img>标签无法带请求头）
+                        "/auth/login",          // 管理端登录
+                        "/h5/auth/login",       // H5 登录
+                        "/h5/auth/register",    // H5 注册
+                        "/uploads/**",          // 已上传照片（<img> 标签不可带 token）
+                        "/qrcode/**",           // 二维码图片
                         "/error"
                 );
     }

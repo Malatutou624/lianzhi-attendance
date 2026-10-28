@@ -16,6 +16,8 @@ import java.util.Map;
  * POST /auth/login   登录（不需要token）
  * GET  /auth/info    获取当前登录用户信息
  * POST /auth/logout  退出登录
+ * GET  /auth/profile 获取当前管理员个人资料（含真实姓名/手机/邮箱/头像）
+ * PUT  /auth/profile 更新当前管理员个人资料
  */
 @RestController
 @RequestMapping("/auth")
@@ -45,6 +47,29 @@ public class AuthController {
     public Result<Void> logout(HttpServletRequest request) {
         String token = (String) request.getAttribute("token");
         authService.logout(token);
+        return Result.ok();
+    }
+
+    /** 获取当前管理员个人资料 */
+    @GetMapping("/profile")
+    public Result<SysUser> profile(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        SysUser u = sysUserMapper.selectById(userId);
+        if (u != null) u.setPassword(null); // 脱敏
+        return Result.ok(u);
+    }
+
+    /** 更新当前管理员个人资料（realName/phone/email/avatar） */
+    @PutMapping("/profile")
+    public Result<Void> updateProfile(@RequestBody SysUser input, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        SysUser u = sysUserMapper.selectById(userId);
+        if (u == null) return Result.fail("用户不存在");
+        if (input.getRealName() != null) u.setRealName(input.getRealName());
+        if (input.getPhone() != null) u.setPhone(input.getPhone());
+        if (input.getEmail() != null) u.setEmail(input.getEmail());
+        if (input.getAvatar() != null) u.setAvatar(input.getAvatar());
+        sysUserMapper.updateById(u);
         return Result.ok();
     }
 

@@ -21,10 +21,8 @@ public class EmployeeService extends ServiceImpl<EmployeeMapper, Employee> {
      */
     @Transactional(rollbackFor = Exception.class)
     public boolean removeByIdWithRecords(Long id) {
-        // 先删除该员工的所有打卡记录
         checkinRecordMapper.delete(
                 Wrappers.<CheckinRecord>lambdaQuery().eq(CheckinRecord::getEmpId, id));
-        // 再删除员工本身
         return removeById(id);
     }
 }

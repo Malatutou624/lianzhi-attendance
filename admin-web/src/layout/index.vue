@@ -9,6 +9,7 @@
         <el-menu-item index="/employee">员工管理</el-menu-item>
         <el-menu-item index="/checkin">打卡记录</el-menu-item>
         <el-menu-item index="/rule">考勤规则</el-menu-item>
+        <el-menu-item index="/approval">审批中心</el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -17,10 +18,11 @@
       <el-header class="header">
         <span class="page-title">{{ $route.meta.title }}</span>
         <el-dropdown @command="handleCommand">
-          <span class="user">{{ userStore.userInfo.realName || '管理员' }} ▾</span>
+          <span class="user">{{ userStore.userInfo.realName || userStore.userInfo.username || '管理员' }} ▾</span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+              <el-dropdown-item command="profile">👤 个人主页</el-dropdown-item>
+              <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -43,6 +45,10 @@ const router = useRouter()
 const userStore = useUserStore()
 
 async function handleCommand(cmd) {
+  if (cmd === 'profile') {
+    router.push('/profile')
+    return
+  }
   if (cmd === 'logout') {
     try { await request.post('/auth/logout') } catch (e) { /* 忽略 */ }
     userStore.logout()
