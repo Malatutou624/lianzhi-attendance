@@ -158,9 +158,7 @@ function makeDay(d, current) {
   const rec = records.value.find(r => r.signInTime && r.signInTime.slice(0, 10) === dateStr)
   let status = 'other'
   if (current && rec) {
-    if (rec.status === 'late') status = 'late'
-    else if (rec.status === 'early') status = 'early'
-    else status = 'normal'
+    status = rec.status || 'normal'
   } else if (current && d <= new Date() && d.getDay() !== 0 && d.getDay() !== 6) {
     status = 'absent'
   }
@@ -185,16 +183,12 @@ const selectedRecord = computed(() => {
 })
 const selectedDateStr = computed(() => selectedDate.value || '')
 const statusText = computed(() => {
-  const s = selectedRecord.value?.status
-  if (s === 'late') return '迟到'
-  if (s === 'early') return '早退'
-  return '正常'
+  const MAP = { normal: '正常', late: '迟到', early: '早退', lateEarly: '迟到且早退', leave: '请假', absent: '旷工', other: '其他' }
+  return MAP[selectedRecord.value?.status] || '正常'
 })
 const tagType = computed(() => {
-  const s = selectedRecord.value?.status
-  if (s === 'late') return 'danger'
-  if (s === 'early') return 'warning'
-  return 'success'
+  const MAP = { normal: 'success', late: 'danger', early: 'warning', lateEarly: 'danger', leave: 'info', absent: 'danger', other: 'info' }
+  return MAP[selectedRecord.value?.status] || 'success'
 })
 // 工时显示：直接用后端算好的 workHours（分钟精度，保留 2 位小数）
 function calcHours(r) {
