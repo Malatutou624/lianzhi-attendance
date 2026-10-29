@@ -38,6 +38,13 @@
         <div class="label">个人考勤</div>
         <div class="desc">考勤日历 · 请假加班申请 · 审批进度</div>
       </button>
+
+      <!-- AI 智能问答：始终可进 -->
+      <button class="big-btn ai" @click="goAi">
+        <div class="icon">🤖</div>
+        <div class="label">AI 智能问答</div>
+        <div class="desc">考勤规则问答 · 今日概况 · 个人统计</div>
+      </button>
     </div>
 
     <div class="footer">联智智能考勤 · 位置打卡</div>
@@ -87,6 +94,10 @@ function goHome() {
   router.push({ path: '/h5/home' })
 }
 
+function goAi() {
+  router.push({ path: '/h5/ai' })
+}
+
 function logout() {
   if (!confirm('确定要退出登录吗？')) return
   localStorage.removeItem('h5Token')
@@ -129,6 +140,7 @@ function logout() {
 .big-btn.collect { background: #4c51bf; }
 .big-btn.checkin { background: #38a169; }
 .big-btn.attend { background: #d69e2e; }
+.big-btn.ai { background: #805ad5; }
 .big-btn.disabled { opacity: 0.45; cursor: not-allowed; }
 .big-btn:active:not(.disabled) { transform: scale(0.98); }
 .icon { font-size: 28px; }

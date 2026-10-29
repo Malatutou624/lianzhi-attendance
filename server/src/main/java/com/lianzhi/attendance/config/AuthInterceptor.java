@@ -24,6 +24,10 @@ public class AuthInterceptor implements HandlerInterceptor {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
 
         String token = request.getHeader("Authorization");
+        // 去掉 "Bearer " 前缀（前端统一发送 Authorization: Bearer xxx）
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7).trim();
+        }
         String uri = request.getRequestURI();
 
         // 0. H5 员工端 token（路径以 /h5/ 或 /api/h5/ 开头）
@@ -47,6 +51,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         //    所以这些接口在 login:token 找不到时也 fallback 查 h5:token
         boolean isManagement =
                 uri.startsWith("/auth/") || uri.startsWith("/api/auth/") ||
+                uri.startsWith("/ai/") || uri.startsWith("/api/ai/") ||
                 uri.startsWith("/employee/") || uri.startsWith("/api/employee/") ||
                 uri.startsWith("/venue/") || uri.startsWith("/api/venue/") ||
                 uri.startsWith("/approval/") || uri.startsWith("/api/approval/") ||
