@@ -19,7 +19,8 @@ const routes = [
     component: () => import('../layout/index.vue'),
     redirect: '/dashboard',
     children: [
-      { path: 'dashboard', component: () => import('../views/dashboard/index.vue'), meta: { title: '数据中心' } },
+      { path: 'dashboard', component: () => import('../views/dashboard/index.vue'), meta: { title: '首页' } },
+      { path: 'analysis', component: () => import('../views/analysis/index.vue'), meta: { title: '数据分析看板' } },
       { path: 'venue', component: () => import('../views/venue/index.vue'), meta: { title: '办公场所' } },
       { path: 'employee', component: () => import('../views/employee/index.vue'), meta: { title: '员工管理' } },
       { path: 'checkin', component: () => import('../views/checkin/index.vue'), meta: { title: '打卡记录' } },

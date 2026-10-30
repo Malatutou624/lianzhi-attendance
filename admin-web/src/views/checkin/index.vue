@@ -88,20 +88,32 @@ async function loadData() {
   }
 }
 
-// 状态文本
+// 状态文本（7 种互斥）
 function getStatusText(row) {
-  if (row.status === 'late') return '迟到'
-  if (row.status === 'early') return '早退'
-  if (row.signInTime && !row.signOutTime) return '正常签到'
-  if (row.signInTime && row.signOutTime) return '正常签退'
-  return '正常'
+  const MAP = {
+    normal: '正常',
+    late: '迟到',
+    early: '早退',
+    lateEarly: '迟到且早退',
+    leave: '请假',
+    absent: '旷工',
+    other: '其他'
+  }
+  return MAP[row.status] || row.status || '-'
 }
 
 // 标签颜色
 function getStatusTagType(row) {
-  if (row.status === 'late') return 'danger'
-  if (row.status === 'early') return 'warning'
-  return 'success'
+  const MAP = {
+    normal: 'success',
+    late: 'danger',
+    early: 'warning',
+    lateEarly: 'danger',
+    leave: 'info',
+    absent: 'danger',
+    other: 'info'
+  }
+  return MAP[row.status] || 'info'
 }
 
 // 计算工时（小时）

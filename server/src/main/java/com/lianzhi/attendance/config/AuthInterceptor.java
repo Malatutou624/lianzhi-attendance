@@ -41,7 +41,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             return writeUnauthorized(response, "请先登录");
         }
 
-        // 1. 管理端 token（auth / employee / venue / approval / rule / checkin 等）
+        // 1. 管理端 token（auth / employee / venue / approval / rule / checkin / analysis 等）
         //    后端同时接收带 /api 前缀（直连后端）和不带前缀（经 Vite 代理转来）两种
         //    额外：H5 页面也可能调 checkin/rule/venue/employee 查询接口（只读自己的数据），
         //    所以这些接口在 login:token 找不到时也 fallback 查 h5:token
@@ -51,7 +51,8 @@ public class AuthInterceptor implements HandlerInterceptor {
                 uri.startsWith("/venue/") || uri.startsWith("/api/venue/") ||
                 uri.startsWith("/approval/") || uri.startsWith("/api/approval/") ||
                 uri.startsWith("/rule/") || uri.startsWith("/api/rule/") ||
-                uri.startsWith("/checkin/") || uri.startsWith("/api/checkin/");
+                uri.startsWith("/checkin/") || uri.startsWith("/api/checkin/") ||
+                uri.startsWith("/analysis/") || uri.startsWith("/api/analysis/");
         if (isManagement) {
             if (token != null && !token.isEmpty()) {
                 String userId = redisTemplate.opsForValue().get("login:token:" + token);

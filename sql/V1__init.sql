@@ -15,6 +15,9 @@ CREATE TABLE sys_user (
     username    VARCHAR(32)  NOT NULL UNIQUE          COMMENT '登录账号',
     password    VARCHAR(64)  NOT NULL                 COMMENT '密码（MD5加密存储）',
     real_name   VARCHAR(32)  DEFAULT NULL             COMMENT '真实姓名',
+    phone       VARCHAR(20)  DEFAULT NULL             COMMENT '手机号',
+    email       VARCHAR(64)  DEFAULT NULL             COMMENT '邮箱',
+    avatar      VARCHAR(255) DEFAULT NULL             COMMENT '头像URL',
     role        VARCHAR(16)  NOT NULL DEFAULT 'admin' COMMENT '角色：admin管理员',
     status      TINYINT      NOT NULL DEFAULT 1       COMMENT '1正常 0停用',
     create_time DATETIME     DEFAULT CURRENT_TIMESTAMP,
@@ -55,6 +58,8 @@ CREATE TABLE employee (
     face_photo    VARCHAR(255) DEFAULT NULL           COMMENT '人脸照片URL',
     face_feature  TEXT         DEFAULT NULL           COMMENT '人脸特征值（虹软SDK提取，Base64）',
     status        TINYINT      NOT NULL DEFAULT 1     COMMENT '1在职 2病假 3事假 0离职',
+    role          TINYINT      NOT NULL DEFAULT 1     COMMENT '1普通员工 2部门主管',
+    leader_id     BIGINT       DEFAULT NULL           COMMENT '直属主管员工ID',
     create_time   DATETIME     DEFAULT CURRENT_TIMESTAMP,
     update_time   DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) COMMENT '员工表';
@@ -127,6 +132,43 @@ CREATE TABLE leave_apply (
     create_time  DATETIME     DEFAULT CURRENT_TIMESTAMP,
     update_time  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) COMMENT '请假加班申请表';
+
+-- ------------------------------------------------------------
+-- 8. H5 员工端账号表：员工扫码注册后登录 H5 用
+-- ------------------------------------------------------------
+CREATE TABLE h5_account (
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    username    VARCHAR(32)  NOT NULL UNIQUE          COMMENT '登录账号',
+    password    VARCHAR(64)  NOT NULL                 COMMENT '密码（MD5加密存储）',
+    emp_id      BIGINT       DEFAULT NULL             COMMENT '绑定的员工ID（采集后绑定）',
+    status      TINYINT      NOT NULL DEFAULT 1       COMMENT '1正常 0停用',
+    create_time DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) COMMENT 'H5员工端账号表';
+
+-- ------------------------------------------------------------
+-- 9. 审批记录表：请假/加班/离职等审批流水
+-- ------------------------------------------------------------
+CREATE TABLE approval_record (
+    id            BIGINT PRIMARY KEY AUTO_INCREMENT,
+    emp_id        BIGINT       NOT NULL              COMMENT '申请人员工ID',
+    type          VARCHAR(16)  NOT NULL              COMMENT 'leave事假/sick病假/annual年假/overtime加班/compensate调休/makeup补卡/resign离职',
+    start_time    DATETIME     DEFAULT NULL          COMMENT '开始时间',
+    end_time      DATETIME     DEFAULT NULL          COMMENT '结束时间',
+    duration_hours DECIMAL(8,2) DEFAULT NULL          COMMENT '时长（小时）',
+    reason        VARCHAR(500) DEFAULT NULL          COMMENT '事由',
+    attachments   VARCHAR(1000) DEFAULT NULL         COMMENT '附件URL，多个逗号分隔',
+    leader_id     BIGINT       DEFAULT NULL          COMMENT '直属主管ID',
+    status        VARCHAR(16)  DEFAULT 'pending'     COMMENT 'pending待审批/approved已批准/rejected已驳回/cancelled已取消',
+    reject_reason VARCHAR(500) DEFAULT NULL          COMMENT '驳回意见',
+    approver_id   BIGINT       DEFAULT NULL          COMMENT '审批人ID',
+    approve_time  DATETIME     DEFAULT NULL          COMMENT '审批时间',
+    resign_reason VARCHAR(500) DEFAULT NULL          COMMENT '离职原因（仅离职类型）',
+    create_time   DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    update_time   DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_emp (emp_id),
+    INDEX idx_leader_status (leader_id, status)
+) COMMENT '审批记录表';
 
 -- ------------------------------------------------------------
 -- 初始数据：默认管理员账号 admin / 密码 123456
