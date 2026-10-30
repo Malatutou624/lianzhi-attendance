@@ -14,6 +14,7 @@ const routes = [
   { path: '/h5/apply', component: () => import('../views/h5/Apply.vue'), meta: { title: '发起申请' } },
   { path: '/h5/myapprovals', component: () => import('../views/h5/MyApprovals.vue'), meta: { title: '我的申请' } },
   { path: '/h5/todoapprovals', component: () => import('../views/h5/TodoApprovals.vue'), meta: { title: '待我审批' } },
+  { path: '/h5/ai', component: () => import('../views/h5/Ai.vue'), meta: { title: 'AI 智能问答' } },
   {
     path: '/',
     component: () => import('../layout/index.vue'),
@@ -26,6 +27,7 @@ const routes = [
       { path: 'checkin', component: () => import('../views/checkin/index.vue'), meta: { title: '打卡记录' } },
       { path: 'rule', component: () => import('../views/rule/index.vue'), meta: { title: '考勤规则' } },
       { path: 'approval', component: () => import('../views/approval/index.vue'), meta: { title: '审批中心' } },
+      { path: 'ai', component: () => import('../views/ai/index.vue'), meta: { title: 'AI 助手' } },
       { path: 'profile', component: () => import('../views/Profile.vue'), meta: { title: '个人主页' } },
     ]
   }

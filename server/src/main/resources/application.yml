@@ -34,3 +34,8 @@ lianzhi:
   # 照片等文件保存目录：必须用「绝对路径」
   # 用 ./uploads 这种相对路径时，后端启动目录不确定（可能变成 Tomcat 临时目录），会导致上传报 FileNotFoundException
   upload-dir: D:\Project\Lianzhi Smart Attendance Management System\lianzhi-attendance\server\uploads
+  # 微信小程序配置
+  wx:
+    appid: wx01e24c0c40273a70
+    # 小程序密钥 - 在微信公众平台 → 开发管理 → 开发设置里找
+    secret: 67711ea3fc5a4a716b5413b9d438a889

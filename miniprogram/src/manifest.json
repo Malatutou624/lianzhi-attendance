@@ -1,0 +1,29 @@
+{
+  "name": "联智考勤",
+  "appid": "__UNI__Lianzhi",
+  "description": "联智智能考勤系统小程序端",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "usingComponents": true
+  },
+  "mp-weixin": {
+    "appid": "wx01e24c0c40273a70",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true
+    },
+    "usingComponents": true,
+    "permission": {
+      "scope.userLocation": { "desc": "用于打卡时获取当前位置" },
+      "scope.camera": { "desc": "用于人脸采集和打卡拍照" }
+    },
+    "requiredPrivateInfos": ["getLocation", "chooseLocation"],
+    "lazyCodeLoading": "requiredComponents"
+  },
+  "h5": {
+    "title": "联智考勤"
+  }
+}

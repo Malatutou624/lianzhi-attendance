@@ -12,6 +12,8 @@ public class H5Account {
     private Long id;
     private String username;
     private String password;
+    /** 微信 openid（小程序登录自动绑定） */
+    private String openid;
     /** 绑定的员工ID（采集后绑定，唯一） */
     private Long empId;
     private Integer status;

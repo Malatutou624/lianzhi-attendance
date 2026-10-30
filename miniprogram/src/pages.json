@@ -1,0 +1,32 @@
+{
+  "pages": [
+    { "path": "pages/login/login", "style": { "navigationBarTitleText": "登录" } },
+    { "path": "pages/portal/portal", "style": { "navigationBarTitleText": "联智考勤" } },
+    { "path": "pages/collect/collect", "style": { "navigationBarTitleText": "员工信息采集" } },
+    { "path": "pages/checkin/checkin", "style": { "navigationBarTitleText": "打卡" } },
+    { "path": "pages/home/home", "style": { "navigationBarTitleText": "我的考勤" } },
+    { "path": "pages/calendar/calendar", "style": { "navigationBarTitleText": "考勤日历" } },
+    { "path": "pages/apply/apply", "style": { "navigationBarTitleText": "发起申请" } },
+    { "path": "pages/approvals/my", "style": { "navigationBarTitleText": "我的申请" } },
+    { "path": "pages/approvals/todo", "style": { "navigationBarTitleText": "待我审批" } },
+    { "path": "pages/ai/ai", "style": { "navigationBarTitleText": "AI 智能问答" } }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "联智考勤",
+    "navigationBarBackgroundColor": "#2b6cb0",
+    "backgroundColor": "#f5f7fa"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#2b6cb0",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/portal/portal", "text": "首页" },
+      { "pagePath": "pages/checkin/checkin", "text": "打卡" },
+      { "pagePath": "pages/home/home", "text": "考勤" },
+      { "pagePath": "pages/ai/ai", "text": "AI助手" }
+    ]
+  }
+}
