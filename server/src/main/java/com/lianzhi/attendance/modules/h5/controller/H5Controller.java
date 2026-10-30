@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lianzhi.attendance.common.Result;
+import com.lianzhi.attendance.modules.analysis.service.AttendanceStatusService;
 import com.lianzhi.attendance.modules.checkin.entity.CheckinRecord;
 import com.lianzhi.attendance.modules.checkin.service.CheckinService;
 import com.lianzhi.attendance.modules.employee.entity.Employee;
@@ -60,6 +61,9 @@ public class H5Controller {
 
     @Autowired
     private RuleService ruleService;
+
+    @Autowired
+    private com.lianzhi.attendance.modules.analysis.service.AttendanceStatusService statusService;
 
     @Autowired
     private H5AccountMapper accountMapper;
@@ -290,8 +294,9 @@ public class H5Controller {
             return Result.fail("60秒内请勿重复打卡");
         }
 
-        // ---------- 5. 上下班判定（迟到/早退/正常）----------
-        // 规则：今天第一次打卡算"上班卡"，第二次打卡算"下班卡"
+        // ---------- 5. 上下班判定（统一走 AttendanceStatusService 7 种互斥口径）----------
+        // 第一次打卡（签到）：先按签到时间写临时状态，签退后再综合判定
+        // 第二次打卡（签退）：用 judgeByRecord 算出最终综合状态
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
         List<CheckinRecord> todayRecords = checkinService.list(
                 Wrappers.<CheckinRecord>lambdaQuery()
@@ -299,23 +304,20 @@ public class H5Controller {
                         .ge(CheckinRecord::getSignInTime, startOfToday)
                         .orderByAsc(CheckinRecord::getSignInTime));
         long todayCount = todayRecords.size();
-        // 查该场所的考勤规则（没配置就用默认 9:00/18:00/宽限10分钟）
         AttendRule rule = ruleService.getByVenueId(venueId);
-        LocalTime nowTime = LocalTime.now();
-        String status = "normal";           // 默认正常
-        String punchType;                   // 上班卡 / 下班卡
+        String status;       // 7 种互斥状态之一
+        String punchType;
         if (todayCount == 0) {
             punchType = "上班卡";
-            // 打卡时间 晚于 上班时间+宽限分钟 → 迟到
-            if (nowTime.isAfter(rule.getWorkStart().plusMinutes(rule.getLateMinutes()))) {
-                status = "late";
-            }
+            // 暂时按签到时间判，签退后会覆盖成最终状态
+            status = LocalTime.now().isAfter(rule.getWorkStart().plusMinutes(rule.getLateMinutes()))
+                    ? AttendanceStatusService.LATE : AttendanceStatusService.NORMAL;
         } else if (todayCount == 1) {
             punchType = "下班卡";
-            // 打卡时间 早于 下班时间 → 早退
-            if (nowTime.isBefore(rule.getWorkEnd())) {
-                status = "early";
-            }
+            // 综合签到+签退算最终状态
+            CheckinRecord first = todayRecords.get(0);
+            first.setSignOutTime(LocalDateTime.now());
+            status = statusService.judgeByRecord(first, rule);
         } else {
             return Result.fail("今日已完成签到和签退，请勿重复打卡");
         }

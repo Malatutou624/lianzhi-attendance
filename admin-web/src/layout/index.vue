@@ -4,7 +4,8 @@
     <el-aside width="210px">
       <div class="logo">联智考勤</div>
       <el-menu :default-active="$route.path" router background-color="#1a365d" text-color="#cbd5e0" active-text-color="#ffffff">
-        <el-menu-item index="/dashboard">数据中心</el-menu-item>
+        <el-menu-item index="/dashboard">首页</el-menu-item>
+        <el-menu-item index="/analysis">数据分析看板</el-menu-item>
         <el-menu-item index="/venue">办公场所</el-menu-item>
         <el-menu-item index="/employee">员工管理</el-menu-item>
         <el-menu-item index="/checkin">打卡记录</el-menu-item>
