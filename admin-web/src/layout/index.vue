@@ -12,6 +12,7 @@
         <el-menu-item index="/rule">考勤规则</el-menu-item>
         <el-menu-item index="/approval">审批中心</el-menu-item>
         <el-menu-item index="/ai">🤖 AI 助手</el-menu-item>
+        <el-menu-item index="/knowledge">📚 知识库管理</el-menu-item>
       </el-menu>
     </el-aside>
 

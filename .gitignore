@@ -26,3 +26,9 @@ Thumbs.db
 
 # ---------- 误建的空 Git 仓库 ----------
 /lianzhi/
+
+# ---------- 知识库临时生成/运行时 ----------
+server/knowledge/docs-out/node_modules/
+server/knowledge/docs-out/*.js
+server/knowledge/docs-out/package.json
+server/knowledge/docs-out/package-lock.json

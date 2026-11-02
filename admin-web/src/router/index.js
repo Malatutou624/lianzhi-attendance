@@ -28,6 +28,7 @@ const routes = [
       { path: 'rule', component: () => import('../views/rule/index.vue'), meta: { title: '考勤规则' } },
       { path: 'approval', component: () => import('../views/approval/index.vue'), meta: { title: '审批中心' } },
       { path: 'ai', component: () => import('../views/ai/index.vue'), meta: { title: 'AI 助手' } },
+      { path: 'knowledge', component: () => import('../views/knowledge/index.vue'), meta: { title: '知识库管理' } },
       { path: 'profile', component: () => import('../views/Profile.vue'), meta: { title: '个人主页' } },
     ]
   }

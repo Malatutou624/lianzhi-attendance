@@ -68,12 +68,19 @@
             <artifactId>javase</artifactId>
             <version>3.5.1</version>
         </dependency>
-        <!-- Apache POI：数据分析模块导出 Excel 报表 -->
+        <!-- Apache POI：数据分析模块导出 Excel 报表 + 知识库 PPT/Excel 解析 -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>5.2.5</version>
         </dependency>
+        <!-- Apache PDFBox：知识库 PDF 文档解析 -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.30</version>
+        </dependency>
+        <!-- 注意：Word 解析用的是下方的 Apache POI (ooxml)，无需 docx4j -->
         <!-- 虹软 ArcFace SDK 3.0：真·人脸识别（本地 jar + DLL，课程要求） -->
         <dependency>
             <groupId>com.arcsoft</groupId>

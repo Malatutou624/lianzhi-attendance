@@ -5,7 +5,7 @@ import uni from '@dcloudio/vite-plugin-uni'
 // 方式 A：本地调试（开发者工具模拟器）→ http://10.65.251.53:8080 （电脑局域网 IP）
 // 方式 B：内网穿透真机测试 → https://xxx.trycloudflare.com
 // 方式 C：正式部署 → https://你的域名
-const BACKEND_BASE = 'http://10.65.251.131:8080'
+const BACKEND_BASE = 'http://10.65.251.68:8080'
 
 export default defineConfig({
   plugins: [uni()],
