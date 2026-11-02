@@ -9,7 +9,7 @@ spring:
     # 数据库地址：本地 MySQL，库名 lianzhi_attendance
     url: jdbc:mysql://localhost:3306/lianzhi_attendance?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
-    password: darker
+    password: Acx20050624
     druid:
       initial-size: 5     # 连接池初始大小
       max-active: 20
@@ -32,8 +32,19 @@ mybatis-plus:
 # 自定义配置
 lianzhi:
   # 照片等文件保存目录：必须用「绝对路径」
-  # 用 ./uploads 这种相对路径时，后端启动目录不确定（可能变成 Tomcat 临时目录），会导致上传报 FileNotFoundException
-  upload-dir: D:\Project\Lianzhi Smart Attendance Management System\lianzhi-attendance\server\uploads
+  upload-dir: D:\lianzhi-attendance-main\server\uploads
+  # 虹软 ArcFace SDK 3.0 配置（课程要求）
+  arcface:
+    # DLL 所在目录（相对项目根目录）
+    lib-dir: D:\lianzhi-attendance-main\server\arcsoft
+    # 激活所需 APP_ID 和 SDK_KEY（从虹软官网开发者后台获取）
+    app-id: 7UEPMyygfd1HcevCMLT9KESSSg14PjN7PaabYBRna12Z
+    sdk-key: GdFLSUJ5BGaAqaJNDS8w7AGbS2fTmfKCbcgZSPizdR5g
+    # 激活文件存放目录（激活一次后离线可用）
+    active-dir: D:\lianzhi-attendance-main\server\arcsoft
+    # 人脸比对相似度阈值：0~1，默认 0.85（0.85 以上判为同一人）
+    # 官方推荐 0.8~0.9 之间，课程项目用 0.85
+    match-threshold: 0.85
   # 微信小程序配置
   wx:
     appid: wx01e24c0c40273a70

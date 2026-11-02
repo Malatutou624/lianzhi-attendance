@@ -74,6 +74,14 @@
             <artifactId>poi-ooxml</artifactId>
             <version>5.2.5</version>
         </dependency>
+        <!-- 虹软 ArcFace SDK 3.0：真·人脸识别（本地 jar + DLL，课程要求） -->
+        <dependency>
+            <groupId>com.arcsoft</groupId>
+            <artifactId>arcsoft-sdk-face</artifactId>
+            <version>3.0.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/arcsoft-sdk-face-3.0.0.0.jar</systemPath>
+        </dependency>
         <!-- Lombok：自动生成 getter/setter，减少模板代码（IDEA 已内置支持） -->
         <dependency>
             <groupId>org.projectlombok</groupId>

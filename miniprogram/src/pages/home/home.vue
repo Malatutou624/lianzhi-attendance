@@ -180,6 +180,8 @@ function formatTime(t: string) { return t ? t.substring(11, 16) : '' }
 .status.normal { background: #c6f6d5; color: #22543d; }
 .status.late { background: #fed7d7; color: #742a2a; }
 .status.early { background: #feebc8; color: #7b341e; }
+.status.lateEarly { background: #fed7d7; color: #742a2a; }
+.status.leave { background: #bee3f8; color: #2a4365; }
 .status.absent { background: #e2e8f0; color: #4a5568; }
 .empty { text-align: center; color: #a0aec0; padding: 40rpx 0; font-size: 28rpx; }
 .no-emp { display: block; text-align: center; color: #4a5568; margin-bottom: 24rpx; font-size: 28rpx; }

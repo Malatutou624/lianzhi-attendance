@@ -15,6 +15,9 @@ import com.lianzhi.attendance.modules.venue.entity.Venue;
 import com.lianzhi.attendance.modules.venue.service.VenueService;
 import com.lianzhi.attendance.modules.h5.entity.H5Account;
 import com.lianzhi.attendance.modules.h5.mapper.H5AccountMapper;
+import com.lianzhi.attendance.modules.face.service.FaceMatchService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -50,6 +53,8 @@ import java.util.concurrent.TimeUnit;
 @RequestMapping("/h5")
 public class H5Controller {
 
+    private static final Logger log = LoggerFactory.getLogger(H5Controller.class);
+
     @Autowired
     private EmployeeService employeeService;
 
@@ -67,6 +72,9 @@ public class H5Controller {
 
     @Autowired
     private H5AccountMapper accountMapper;
+
+    @Autowired
+    private FaceMatchService faceMatchService;
 
     /** Redis 操作工具：用来做"60秒内防重复打卡"的锁 */
     @Autowired
@@ -134,8 +142,12 @@ public class H5Controller {
 
         // 出勤天数 = 有签到的记录数
         long attendDays = records.stream().filter(r -> r.getSignInTime() != null).count();
-        long lateCount = records.stream().filter(r -> "late".equals(r.getStatus())).count();
-        long earlyCount = records.stream().filter(r -> "early".equals(r.getStatus())).count();
+        // 迟到次数 = late + lateEarly（既迟到又早退那天也计入迟到）
+        long lateCount = records.stream().filter(r ->
+                "late".equals(r.getStatus()) || "lateEarly".equals(r.getStatus())).count();
+        // 早退次数 = early + lateEarly（既迟到又早退那天也计入早退）
+        long earlyCount = records.stream().filter(r ->
+                "early".equals(r.getStatus()) || "lateEarly".equals(r.getStatus())).count();
 
         // 累计工时 = 每条记录 signIn→signOut 的分钟数之和 / 60
         double totalHours = 0;
@@ -260,7 +272,23 @@ public class H5Controller {
 
         if (venueId == null) return Result.fail("缺少必要参数：场所");
 
-        // ---------- 1-2 已由上面绑定逻辑处理 ----------
+        // ---------- 1. 人脸识别校验（强制）----------
+        // 采集时的模板照 + 打卡时的现场照 → 感知哈希比对
+        if (StringUtils.isBlank(emp.getFacePhoto()) || StringUtils.isBlank(emp.getFaceFeature())) {
+            return Result.fail("未采集人脸照片，请先完成信息采集");
+        }
+        if (StringUtils.isBlank(photoUrl)) {
+            return Result.fail("请先拍摄现场人脸照片（点击打卡区的拍照按钮）");
+        }
+        FaceMatchService.MatchResult match = faceMatchService.compare(emp.getFacePhoto(), photoUrl);
+        if (!match.match) {
+            // 给前端返回带相似度的详细信息，方便前端展示
+            String detail = String.format("（相似度 %.0f%%，汉明距离 %d/%d）",
+                    match.similarity * 100, match.hammingDistance, FaceMatchService.SAME_PERSON_THRESHOLD);
+            log.warn("[checkin] 人脸比对失败: emp={}, distance={}, similarity={}",
+                    emp.getName(), match.hammingDistance, match.similarity);
+            return Result.fail("人脸识别未通过，请本人正对镜头重新拍照" + detail);
+        }
 
         // ---------- 2. 校验场所 ----------
         Venue venue = venueService.getById(venueId);
@@ -388,6 +416,21 @@ public class H5Controller {
         // 默认在职，保存员工
         employee.setStatus(1);
         employeeService.save(employee);
+
+        // 自动计算人脸特征（pHash）存到 faceFeature 字段
+        // 比对时会用它与打卡现场照做相似度校验
+        if (StringUtils.isNotBlank(employee.getFacePhoto())) {
+            try {
+                String hash = faceMatchService.computeHash(employee.getFacePhoto());
+                if (hash != null) {
+                    employee.setFaceFeature(hash);
+                    employeeService.updateById(employee);
+                }
+            } catch (Exception e) {
+                // 算失败不阻塞采集，后面打卡时会提示"未采集人脸"
+                log.warn("[collect] 人脸特征计算失败（不阻塞采集）: {}", e.getMessage());
+            }
+        }
 
         // 账号绑定该员工（唯一绑定）
         acc.setEmpId(employee.getId());

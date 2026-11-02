@@ -136,6 +136,9 @@ function makeDay(d: Date, current: boolean) {
   if (current && rec) {
     if (rec.status === 'late') status = 'late'
     else if (rec.status === 'early') status = 'early'
+    else if (rec.status === 'lateEarly') status = 'early'   // 既迟到又早退 → 日历显示早退
+    else if (rec.status === 'leave') status = 'normal'      // 请假（日历用绿色）
+    else if (rec.status === 'absent') status = 'absent'
     else status = 'normal'
   } else if (current && d <= new Date() && d.getDay() !== 0 && d.getDay() !== 6) {
     status = 'absent'
@@ -164,6 +167,9 @@ const statusText = computed(() => {
   const s = selectedRecord.value?.status
   if (s === 'late') return '迟到'
   if (s === 'early') return '早退'
+  if (s === 'lateEarly') return '迟到且早退'
+  if (s === 'leave') return '请假'
+  if (s === 'absent') return '旷工'
   return '正常'
 })
 
@@ -242,6 +248,9 @@ function calcHours(r: any) {
 .tag-normal { background: #c6f6d5; color: #22543d; }
 .tag-late { background: #fed7d7; color: #742a2a; }
 .tag-early { background: #feebc8; color: #7b341e; }
+.tag-lateEarly { background: #fed7d7; color: #742a2a; }
+.tag-leave { background: #bee3f8; color: #2a4365; }
+.tag-absent { background: #e2e8f0; color: #4a5568; }
 .empty { text-align: center; color: #a0aec0; padding: 20rpx 0; font-size: 26rpx; }
 
 .summary-row { display: flex; justify-content: space-around; }

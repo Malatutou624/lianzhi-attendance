@@ -160,8 +160,10 @@ public class AiAgentService {
                 .ge(CheckinRecord::getSignInTime, start).lt(CheckinRecord::getSignInTime, end));
 
         long checkedIn = todayRecords.stream().map(CheckinRecord::getEmpId).distinct().count();
-        long lateCount = todayRecords.stream().filter(r -> "late".equals(r.getStatus())).count();
-        long earlyCount = todayRecords.stream().filter(r -> "early".equals(r.getStatus())).count();
+        long lateCount = todayRecords.stream().filter(r ->
+                "late".equals(r.getStatus()) || "lateEarly".equals(r.getStatus())).count();
+        long earlyCount = todayRecords.stream().filter(r ->
+                "early".equals(r.getStatus()) || "lateEarly".equals(r.getStatus())).count();
 
         StringBuilder sb = new StringBuilder();
         sb.append("📅 **").append(today.format(DateTimeFormatter.ISO_DATE)).append(" 考勤概况**\n\n");
@@ -394,8 +396,10 @@ public class AiAgentService {
                 .ge(CheckinRecord::getSignInTime, start).lt(CheckinRecord::getSignInTime, end));
 
         long attendDays = records.stream().filter(r -> r.getSignInTime() != null).count();
-        long lateCount = records.stream().filter(r -> "late".equals(r.getStatus())).count();
-        long earlyCount = records.stream().filter(r -> "early".equals(r.getStatus())).count();
+        long lateCount = records.stream().filter(r ->
+                "late".equals(r.getStatus()) || "lateEarly".equals(r.getStatus())).count();
+        long earlyCount = records.stream().filter(r ->
+                "early".equals(r.getStatus()) || "lateEarly".equals(r.getStatus())).count();
         double totalHours = 0;
         for (CheckinRecord r : records) {
             if (r.getSignInTime() != null && r.getSignOutTime() != null) {

@@ -101,10 +101,11 @@ function onVenueChange(e: any) {
 }
 
 function choosePhoto() {
+  // 强制只能现场拍照
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
-    sourceType: ['camera', 'album'],
+    sourceType: ['camera'],
     success: (res) => {
       const tempPath = res.tempFilePaths[0]
       photoPreview.value = tempPath
@@ -120,7 +121,7 @@ function uploadPhoto(filePath: string) {
     url: (import.meta.env.BACKEND_BASE || 'http://127.0.0.1:8080') + '/upload',
     filePath,
     name: 'file',
-    header: { token },
+    header: { 'Authorization': 'Bearer ' + token },
     success: (res) => {
       uni.hideLoading()
       try {
