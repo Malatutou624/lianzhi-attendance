@@ -88,3 +88,8 @@ lianzhi:
     rag-similarity-threshold: 0.15
   # 知识库文件存储目录（和 uploads 分开）
   knowledge-dir: D:\lianzhi-attendance-main\server\knowledge
+
+# ---------- 地图地理编码（地址→经纬度，给管理端办公场所选点用）----------
+amap:
+  geocode:
+    key: "02c2b5323391bda815f4fe701fc05ac3"   # 高德 Web 服务 API key（免费申请：https://console.amap.com/），留空则降级到 Nominatim 免费服务

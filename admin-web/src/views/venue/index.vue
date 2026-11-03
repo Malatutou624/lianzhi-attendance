@@ -1,40 +1,56 @@
 <template>
   <div>
-    <!-- 搜索 + 新增 -->
-    <div class="toolbar">
-      <el-input v-model="query.name" placeholder="按场所名称搜索" style="width: 220px" clearable @change="loadData" />
-      <el-button type="primary" @click="loadData">查询</el-button>
-      <el-button type="success" @click="openDialog()">新增场所</el-button>
-    </div>
+    <!-- Tab 切换：列表 ↔ 地图 -->
+    <el-tabs v-model="activeTab" @tab-change="onTabChange">
+      <el-tab-pane label="📋 办公区列表" name="list">
+        <!-- 搜索 + 新增 -->
+        <div class="toolbar">
+          <el-input v-model="query.name" placeholder="按场所名称搜索" style="width: 220px" clearable @change="loadData" />
+          <el-button type="primary" @click="loadData">查询</el-button>
+          <el-button type="success" @click="openDialog()">新增场所</el-button>
+        </div>
 
-    <!-- 数据表格 -->
-    <el-table :data="tableData" border v-loading="loading">
-      <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column prop="name" label="场所名称" />
-      <el-table-column prop="companyName" label="所属公司" />
-      <el-table-column prop="address" label="地址" show-overflow-tooltip />
-      <el-table-column label="坐标" width="200">
-        <template #default="{ row }">{{ row.longitude }}, {{ row.latitude }}</template>
-      </el-table-column>
-      <el-table-column prop="radius" label="范围(米)" width="90" />
-      <el-table-column label="操作" width="240">
-        <template #default="{ row }">
-          <el-button size="small" @click="showQrCode(row)">场所码</el-button>
-          <el-button size="small" type="primary" @click="openDialog(row)">编辑</el-button>
-          <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+        <!-- 数据表格 -->
+        <el-table :data="tableData" border v-loading="loading">
+          <el-table-column prop="id" label="ID" width="60" />
+          <el-table-column prop="name" label="场所名称" />
+          <el-table-column prop="companyName" label="所属公司" />
+          <el-table-column prop="address" label="地址" show-overflow-tooltip />
+          <el-table-column label="坐标" width="200">
+            <template #default="{ row }">{{ row.longitude }}, {{ row.latitude }}</template>
+          </el-table-column>
+          <el-table-column prop="radius" label="范围(米)" width="90" />
+          <el-table-column label="操作" width="240">
+            <template #default="{ row }">
+              <el-button size="small" @click="showQrCode(row)">场所码</el-button>
+              <el-button size="small" type="primary" @click="openDialog(row)">编辑</el-button>
+              <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
 
-    <!-- 分页 -->
-    <el-pagination
-      style="margin-top: 12px; justify-content: flex-end"
-      layout="total, prev, pager, next"
-      :total="total"
-      :page-size="query.size"
-      :current-page="query.current"
-      @current-change="(p) => { query.current = p; loadData() }"
-    />
+        <!-- 分页 -->
+        <el-pagination
+          style="margin-top: 12px; justify-content: flex-end"
+          layout="total, prev, pager, next"
+          :total="total"
+          :page-size="query.size"
+          :current-page="query.current"
+          @current-change="(p) => { query.current = p; loadData() }"
+        />
+      </el-tab-pane>
+
+      <el-tab-pane label="🗺️ 场地地图" name="map">
+        <div class="map-toolbar">
+          <span class="map-stats">
+            共 <b>{{ mapVenueList.length }}</b> 个办公场所
+            <el-tag size="small" style="margin-left: 8px" type="info">点击标记查看详情</el-tag>
+          </span>
+          <el-button size="small" @click="loadMapData" :loading="mapLoading">🔄 刷新</el-button>
+        </div>
+        <div ref="mapChartRef" class="map-chart"></div>
+      </el-tab-pane>
+    </el-tabs>
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑场所' : '新增场所'" width="720px" @open="onDialogOpen">
@@ -46,7 +62,32 @@
           <el-input v-model="form.companyName" placeholder="选填" />
         </el-form-item>
         <el-form-item label="地址">
-          <el-input v-model="form.address" placeholder="详细地址，选填" />
+          <div style="display: flex; width: 100%; gap: 6px; position: relative;">
+            <el-input
+              v-model="form.address"
+              placeholder="如：北京市朝阳区建国路88号"
+              @keyup.enter="searchAddress"
+            />
+            <el-button type="primary" :loading="searching" @click="searchAddress">🔍 搜索定位</el-button>
+            <!-- 搜索结果候选列表 -->
+            <div
+              v-if="showResults && geocodeResults.length > 0"
+              class="result-list"
+            >
+              <div
+                v-for="(r, idx) in geocodeResults"
+                :key="idx"
+                class="result-item"
+                @click="selectResult(r)"
+              >
+                <div class="result-addr">{{ r.formattedAddress }}</div>
+                <div class="result-coord">{{ r.lng.toFixed(4) }}, {{ r.lat.toFixed(4) }}</div>
+              </div>
+            </div>
+            <div v-else-if="showResults && !searching && geocodeResults.length === 0 && addressSearched" class="result-empty">
+              未找到匹配地址，可在地图上手动点击选点
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="打卡范围">
           <el-input-number v-model="form.radius" :min="50" :max="5000" /> 米
@@ -84,9 +125,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import * as echarts from 'echarts'
 import request from '../../api/request'
+import { wgs84ToGcj02 } from '../../utils/coordTransform'
+import chinaGeoJSON from '../../assets/china.json'
 
 const tableData = ref([])
 const total = ref(0)
@@ -104,6 +148,19 @@ const currentVenue = ref(null)
 // 地图对象和标记（全局，弹窗关闭时销毁）
 let map = null
 let marker = null
+
+// 地址搜索相关
+const searching = ref(false)
+const showResults = ref(false)
+const geocodeResults = ref([])
+const addressSearched = ref(false)
+
+// Tab + 地图
+const activeTab = ref('list')
+const mapChartRef = ref(null)
+let mapChart = null
+const mapVenueList = ref([])
+const mapLoading = ref(false)
 
 async function loadData() {
   loading.value = true
@@ -192,6 +249,75 @@ function onDialogClose() {
     map = null
     marker = null
   }
+  // 清空搜索状态
+  showResults.value = false
+  geocodeResults.value = []
+  addressSearched.value = false
+}
+
+/** 地址 → 经纬度搜索 */
+async function searchAddress() {
+  const addr = form.value.address?.trim()
+  if (!addr) {
+    ElMessage.warning('请先输入详细地址')
+    return
+  }
+  searching.value = true
+  showResults.value = true
+  addressSearched.value = true
+  geocodeResults.value = []
+  try {
+    const res = await request.get('/geocode', { params: { address: addr } })
+    geocodeResults.value = res.data || []
+    if (geocodeResults.value.length === 0) {
+      // Nominatim 降级可能慢一点，给个提示
+    } else {
+      // 如果只有一条，自动选中
+      if (geocodeResults.value.length === 1) {
+        selectResult(geocodeResults.value[0])
+      }
+    }
+  } catch (e) {
+    ElMessage.error('地址搜索失败')
+  } finally {
+    searching.value = false
+  }
+}
+
+/** 选一个搜索结果 → 地图飞到该点 + 放 marker */
+function selectResult(r) {
+  let lng = r.lng
+  let lat = r.lat
+  // Nominatim 返回 WGS-84，高德瓦片用 GCJ-02，需要转换
+  if (r.source === 'nominatim') {
+    const [gLng, gLat] = wgs84ToGcj02(lng, lat)
+    lng = gLng
+    lat = gLat
+  }
+  // 更新表单坐标
+  form.value.longitude = lng.toFixed(6)
+  form.value.latitude = lat.toFixed(6)
+
+  // 如果还没初始化地图，先初始化（不太可能，因为搜索时弹窗已经打开）
+  if (!map) {
+    initMap()
+  }
+
+  // 地图飞到该点
+  map.flyTo([lat, lng], 17, { duration: 0.8 })
+
+  // 放 / 移动 marker
+  if (marker) {
+    marker.setLatLng([lat, lng])
+  } else {
+    marker = L.marker([lat, lng], { draggable: true }).addTo(map)
+    marker.on('dragend', onMarkerDrag)
+  }
+
+  // 隐藏结果列表
+  showResults.value = false
+
+  ElMessage.success(`已定位到：${r.formattedAddress}`)
 }
 
 async function handleSave() {
@@ -237,12 +363,164 @@ async function showQrCode(row) {
   }
 }
 
+// ========== 场地地图 ==========
+
+async function onTabChange(tab) {
+  if (tab === 'map') {
+    await nextTick()
+    await loadMapData()
+  }
+}
+
+async function loadMapData() {
+  mapLoading.value = true
+  try {
+    // 拉所有有坐标的场所
+    const res = await request.get('/venue/list')
+    mapVenueList.value = (res.data || []).filter(v => v.longitude && v.latitude)
+    renderMap()
+  } catch (e) {
+    ElMessage.error('加载地图数据失败')
+  } finally {
+    mapLoading.value = false
+  }
+}
+
+function renderMap() {
+  if (!mapChartRef.value) return
+
+  // 注册中国地图 GeoJSON（ECharts 5 不再内置，需要手动注册）
+  if (!echarts.getMap('china')) {
+    echarts.registerMap('china', chinaGeoJSON)
+  }
+
+  // 销毁旧实例
+  if (mapChart) {
+    mapChart.dispose()
+    mapChart = null
+  }
+
+  mapChart = echarts.init(mapChartRef.value)
+
+  // 组装散点数据：[lng, lat, venue]
+  const scatterData = mapVenueList.value.map(v => ({
+    name: v.name,
+    value: [Number(v.longitude), Number(v.latitude), v],
+    venue: v
+  }))
+
+  const option = {
+    backgroundColor: '#fff',
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      borderColor: '#eee',
+      borderWidth: 1,
+      textStyle: { color: '#333', fontSize: 13 },
+      formatter: (params) => {
+        if (params.seriesType === 'scatter' || params.seriesType === 'effectScatter') {
+          const v = params.data.venue
+          return `
+            <div style="font-weight:600;color:#303133;margin-bottom:6px;">📍 ${v.name}</div>
+            ${v.companyName ? `<div style="color:#606266;font-size:12px;">🏢 ${v.companyName}</div>` : ''}
+            ${v.address ? `<div style="color:#909399;font-size:12px;margin-top:4px;">${v.address}</div>` : ''}
+            <div style="color:#409eff;font-size:11px;margin-top:4px;">坐标: ${v.longitude}, ${v.latitude}</div>
+          `
+        }
+        return ''
+      }
+    },
+    geo: {
+      map: 'china',
+      roam: true,
+      zoom: 1.2,
+      center: [104, 36],
+      label: {
+        show: false
+      },
+      itemStyle: {
+        areaColor: '#eef3fa',
+        borderColor: '#b0c4de',
+        borderWidth: 0.8
+      },
+      emphasis: {
+        label: {
+          show: true,
+          color: '#333'
+        },
+        itemStyle: {
+          areaColor: '#dce8f7'
+        }
+      }
+    },
+    series: [
+      // 涟漪散点（主要标记，红色闪烁）
+      {
+        name: '办公场所',
+        type: 'effectScatter',
+        coordinateSystem: 'geo',
+        data: scatterData,
+        symbolSize: (val) => 14,
+        rippleEffect: {
+          brushType: 'stroke',
+          scale: 3,
+          period: 4
+        },
+        itemStyle: {
+          color: '#f56c6c',
+          shadowBlur: 10,
+          shadowColor: 'rgba(245,108,108,0.6)'
+        },
+        label: {
+          show: true,
+          position: 'right',
+          formatter: (p) => p.data.name,
+          fontSize: 12,
+          color: '#303133',
+          fontWeight: 500,
+          textBorderColor: '#fff',
+          textBorderWidth: 3
+        },
+        zlevel: 2
+      }
+    ]
+  }
+
+  mapChart.setOption(option)
+
+  // 点击标记 → 弹窗显示详情
+  mapChart.on('click', (params) => {
+    if (params.seriesType === 'effectScatter' && params.data?.venue) {
+      const v = params.data.venue
+      ElMessageBox.alert(
+        `<div style="line-height:1.8;">
+          <div><b>📍 ${v.name}</b></div>
+          ${v.companyName ? `<div>🏢 所属公司：${v.companyName}</div>` : ''}
+          ${v.address ? `<div>📮 地址：${v.address}</div>` : ''}
+          <div>📍 坐标：${v.longitude}, ${v.latitude}</div>
+          <div>📏 范围：${v.radius || 300} 米</div>
+        </div>`,
+        '场所详情',
+        { dangerouslyUseHTMLString: true, confirmButtonText: '知道了' }
+      )
+    }
+  })
+
+  // 响应式
+  window.addEventListener('resize', () => mapChart && mapChart.resize())
+}
+
 // 组件销毁时清理地图
 onBeforeUnmount(() => {
   if (map) {
     map.remove()
     map = null
   }
+  if (mapChart) {
+    mapChart.dispose()
+    mapChart = null
+  }
+  window.removeEventListener('resize', () => mapChart && mapChart.resize())
 })
 
 onMounted(loadData)
@@ -263,4 +541,42 @@ onMounted(loadData)
 .coord-display b { color: #409eff; }
 .qr-link { font-size: 12px; color: #409eff; word-break: break-all; margin-top: 4px; }
 .qr-tip { font-size: 12px; color: #909399; margin-top: 2px; }
+
+/* 地址搜索结果列表 */
+.result-list {
+  position: absolute; top: 100%; left: 0; right: 80px; margin-top: 4px;
+  background: #fff; border: 1px solid #e4e7ed; border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12); max-height: 240px; overflow-y: auto;
+  z-index: 999;
+}
+.result-item {
+  padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f2f6fc;
+  transition: background 0.15s;
+}
+.result-item:last-child { border-bottom: none; }
+.result-item:hover { background: #ecf5ff; }
+.result-addr { font-size: 13px; color: #303133; }
+.result-coord { font-size: 11px; color: #909399; margin-top: 2px; }
+.result-empty {
+  position: absolute; top: 100%; left: 0; right: 80px; margin-top: 4px;
+  padding: 10px 12px; background: #fef0f0; border: 1px solid #fde2e2;
+  border-radius: 6px; font-size: 12px; color: #f56c6c; z-index: 999;
+}
+
+/* 场地地图 */
+.map-toolbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0;
+}
+.map-stats {
+  font-size: 14px; color: #606266;
+}
+.map-stats b {
+  color: #409eff; font-size: 18px; margin: 0 2px;
+}
+.map-chart {
+  width: 100%; height: 620px;
+  border: 1px solid #ebeef5; border-radius: 6px;
+  background: #fff;
+}
 </style>

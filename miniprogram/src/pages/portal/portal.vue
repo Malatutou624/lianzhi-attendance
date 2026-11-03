@@ -1,59 +1,107 @@
 <template>
   <view class="portal">
-    <!-- 头部用户信息 -->
-    <view class="header">
-      <view v-if="accountInfo" class="user-info">
-        <view class="avatar">{{ (accountInfo.employee?.name || accountInfo.username || 'L').charAt(0) }}</view>
-        <view class="info">
-          <text class="name">{{ accountInfo.employee?.name || accountInfo.username }}</text>
-          <text class="dept">{{ accountInfo.employee?.dept || '待采集员工信息' }}</text>
+    <!-- 渐变头图 + 用户信息 -->
+    <view class="hero">
+      <view class="hero-bg"></view>
+      <view class="hero-content">
+        <view v-if="accountInfo" class="user-info">
+          <view class="avatar">
+            {{ (accountInfo.employee?.name || accountInfo.username || 'L').charAt(0) }}
+            <view class="avatar-ring"></view>
+          </view>
+          <view class="info">
+            <text class="greeting">你好 👋</text>
+            <text class="name">{{ accountInfo.employee?.name || accountInfo.username }}</text>
+            <text class="dept">{{ accountInfo.employee?.dept || '待采集员工信息' }}</text>
+          </view>
+          <view class="logout" @click="logout">
+            <text>退出</text>
+          </view>
         </view>
-        <button class="logout-btn" size="mini" @click="logout">退出</button>
-      </view>
-      <view v-else class="not-login">
-        <text>欢迎使用联智考勤</text>
-        <button @click="goLogin">立即登录</button>
+        <view v-else class="not-login">
+          <text class="welcome">欢迎使用联智考勤</text>
+          <view class="btn-primary" @click="goLogin">立即登录</view>
+        </view>
       </view>
     </view>
 
     <!-- 快捷统计卡片 -->
     <view v-if="stats" class="stats-row">
-      <view class="stat-card">
+      <view class="stat-card blue">
         <text class="num">{{ stats.attendDays }}</text>
         <text class="label">出勤天数</text>
+        <view class="stat-icon">📅</view>
       </view>
-      <view class="stat-card">
+      <view class="stat-card orange">
         <text class="num">{{ stats.lateCount }}</text>
         <text class="label">迟到次数</text>
+        <view class="stat-icon">⏰</view>
       </view>
-      <view class="stat-card">
+      <view class="stat-card red">
         <text class="num">{{ stats.earlyCount }}</text>
         <text class="label">早退次数</text>
+        <view class="stat-icon">🏃</view>
       </view>
-      <view class="stat-card">
+      <view class="stat-card purple">
         <text class="num">{{ stats.totalHours }}</text>
         <text class="label">累计工时(h)</text>
+        <view class="stat-icon">⚡</view>
       </view>
     </view>
 
-    <!-- 4 大功能入口 -->
+    <!-- 功能入口 2×3 -->
     <view class="entries">
       <view class="entry-card collect" @click="goCollect">
-        <view class="icon">📋</view>
+        <view class="entry-icon-wrap">
+          <text class="entry-icon">📋</text>
+        </view>
         <text class="label">信息采集</text>
+        <text class="sub">人脸 + 资料</text>
       </view>
       <view class="entry-card checkin" @click="goCheckin">
-        <view class="icon">⏰</view>
+        <view class="entry-icon-wrap">
+          <text class="entry-icon">⏰</text>
+        </view>
         <text class="label">上班打卡</text>
+        <text class="sub">人脸识别</text>
       </view>
       <view class="entry-card attendance" @click="goHome">
-        <view class="icon">📊</view>
+        <view class="entry-icon-wrap">
+          <text class="entry-icon">📊</text>
+        </view>
         <text class="label">个人考勤</text>
+        <text class="sub">打卡明细</text>
       </view>
       <view class="entry-card ai" @click="goAI">
-        <view class="icon">🤖</view>
+        <view class="entry-icon-wrap">
+          <text class="entry-icon">🤖</text>
+        </view>
         <text class="label">AI 问答</text>
+        <text class="sub">智能助手</text>
       </view>
+      <view class="entry-card notice" @click="goNotice">
+        <view class="entry-icon-wrap">
+          <text class="entry-icon">🔔</text>
+          <view v-if="unreadCount > 0" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</view>
+        </view>
+        <text class="label">消息中心</text>
+        <text class="sub">
+          <text v-if="unreadCount > 0" class="unread-hint">{{ unreadCount }} 条未读</text>
+          <text v-else class="unread-hint">补卡/月报</text>
+        </text>
+      </view>
+      <view class="entry-card report" @click="goReport">
+        <view class="entry-icon-wrap">
+          <text class="entry-icon">📈</text>
+        </view>
+        <text class="label">月度报告</text>
+        <text class="sub">上月汇总</text>
+      </view>
+    </view>
+
+    <!-- 底部 -->
+    <view class="footer">
+      <text>联智考勤 · 智能出勤管理系统</text>
     </view>
   </view>
 </template>
@@ -65,10 +113,14 @@ import { http } from '@/utils/request'
 
 const accountInfo = ref<any>(null)
 const stats = ref<any>(null)
+const unreadCount = ref(0)
 
 onShow(async () => {
   await refreshAccountInfo()
-  if (accountInfo.value) loadStats()
+  if (accountInfo.value) {
+    loadStats()
+    loadUnread()
+  }
 })
 
 async function refreshAccountInfo() {
@@ -84,8 +136,13 @@ async function refreshAccountInfo() {
 async function loadStats() {
   const now = new Date()
   const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  try { stats.value = await http.get('/h5/stats', { month }) } catch {}
+}
+
+async function loadUnread() {
   try {
-    stats.value = await http.get('/h5/stats', { month })
+    const c = await http.get('/h5/notice/unread', undefined, { loading: false })
+    unreadCount.value = Number(c) || 0
   } catch {}
 }
 
@@ -94,6 +151,8 @@ function goCollect() { uni.navigateTo({ url: '/pages/collect/collect' }) }
 function goCheckin() { uni.switchTab({ url: '/pages/checkin/checkin' }) }
 function goHome() { uni.switchTab({ url: '/pages/home/home' }) }
 function goAI() { uni.switchTab({ url: '/pages/ai/ai' }) }
+function goNotice() { uni.navigateTo({ url: '/pages/notice/notice' }) }
+function goReport() { uni.navigateTo({ url: '/pages/report/report' }) }
 
 function logout() {
   uni.removeStorageSync('h5Token')
@@ -104,69 +163,177 @@ function logout() {
 
 <style lang="scss" scoped>
 .portal {
-  padding: 30rpx;
+  min-height: 100vh;
+  background: #f5f7fa;
+}
 
-  .header {
-    background: linear-gradient(135deg, #2b6cb0, #805ad5);
-    border-radius: 24rpx;
-    padding: 40rpx 30rpx;
-    color: #fff;
-    margin-bottom: 30rpx;
+/* ===== Hero 头图 ===== */
+.hero {
+  position: relative;
+  padding: 60rpx 32rpx 80rpx;
+  overflow: hidden;
+}
 
-    .avatar {
-      width: 100rpx; height: 100rpx;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.3);
-      text-align: center; line-height: 100rpx;
-      font-size: 44rpx; font-weight: bold;
-      margin-right: 20rpx;
-    }
-    .user-info { display: flex; align-items: center; }
-    .info { flex: 1; display: flex; flex-direction: column; }
-    .name { font-size: 32rpx; font-weight: bold; }
-    .dept { font-size: 24rpx; opacity: 0.8; margin-top: 6rpx; }
-    .logout-btn { background: rgba(255,255,255,0.2); color: #fff; font-size: 22rpx; }
-  }
+.hero-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, #1e3a5f 0%, #2b6cb0 40%, #805ad5 100%);
+}
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  bottom: -40rpx; left: -20rpx; right: -20rpx; height: 100rpx;
+  background: #f5f7fa;
+  border-radius: 60rpx 60rpx 0 0;
+}
 
-  .stats-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 30rpx;
+.hero-content { position: relative; z-index: 1; }
 
-    .stat-card {
-      background: #fff;
-      border-radius: 16rpx;
-      flex: 1;
-      margin: 0 8rpx;
-      padding: 24rpx 10rpx;
-      text-align: center;
-      box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+/* 用户信息 */
+.user-info {
+  display: flex; align-items: center;
+  gap: 20rpx;
+}
 
-      .num { display: block; font-size: 36rpx; font-weight: bold; color: #2b6cb0; }
-      .label { display: block; font-size: 22rpx; color: #999; margin-top: 6rpx; }
-    }
-  }
+.avatar {
+  width: 96rpx; height: 96rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 42rpx; font-weight: bold; color: #fff;
+  position: relative;
+}
+.avatar-ring {
+  position: absolute;
+  inset: -4rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(255,255,255,0.5);
+}
 
-  .entries {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24rpx;
+.info { flex: 1; display: flex; flex-direction: column; gap: 4rpx; }
+.greeting { font-size: 24rpx; color: rgba(255,255,255,0.8); }
+.name { font-size: 36rpx; font-weight: 700; color: #fff; letter-spacing: 1px; }
+.dept { font-size: 24rpx; color: rgba(255,255,255,0.7); }
 
-    .entry-card {
-      background: #fff;
-      border-radius: 20rpx;
-      padding: 50rpx 30rpx;
-      text-align: center;
-      box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+.logout {
+  padding: 10rpx 24rpx;
+  background: rgba(255,255,255,0.2);
+  border-radius: 30rpx;
+  font-size: 24rpx;
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
 
-      .icon { font-size: 80rpx; margin-bottom: 16rpx; }
-      .label { font-size: 28rpx; color: #333; font-weight: 500; }
+/* 未登录 */
+.not-login {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 20rpx;
+}
+.welcome { color: #fff; font-size: 36rpx; font-weight: 600; }
 
-      &.collect { background: linear-gradient(135deg, #e6fffa, #b2f5ea); }
-      &.checkin { background: linear-gradient(135deg, #ebf8ff, #bee3f8); }
-      &.attendance { background: linear-gradient(135deg, #f0fff4, #c6f6d5); }
-      &.ai { background: linear-gradient(135deg, #faf5ff, #e9d8fd); }
-    }
-  }
+/* ===== 统计卡片 ===== */
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20rpx;
+  padding: 0 24rpx;
+  margin-top: -40rpx;
+  position: relative;
+  z-index: 2;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
+  display: flex; flex-direction: column;
+}
+.stat-card::after {
+  content: '';
+  position: absolute; right: -20rpx; top: -20rpx;
+  width: 80rpx; height: 80rpx; border-radius: 50%;
+  opacity: 0.12;
+}
+.stat-card.blue::after { background: #4299e1; }
+.stat-card.orange::after { background: #ed8936; }
+.stat-card.red::after { background: #f56565; }
+.stat-card.purple::after { background: #805ad5; }
+
+.stat-card.blue .num { color: #2b6cb0; }
+.stat-card.orange .num { color: #dd6b20; }
+.stat-card.red .num { color: #e53e3e; }
+.stat-card.purple .num { color: #805ad5; }
+
+.num { font-size: 44rpx; font-weight: 700; line-height: 1; }
+.label { font-size: 24rpx; color: #a0aec0; margin-top: 6rpx; }
+
+.stat-icon {
+  position: absolute; right: 24rpx; bottom: 20rpx;
+  font-size: 36rpx; opacity: 0.4;
+}
+
+/* ===== 功能入口 ===== */
+.entries {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20rpx;
+  padding: 32rpx 24rpx;
+}
+
+.entry-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx 16rpx;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+.entry-card:active { transform: scale(0.96); box-shadow: 0 1rpx 4rpx rgba(0,0,0,0.06); }
+
+.entry-icon-wrap {
+  width: 72rpx; height: 72rpx;
+  border-radius: 18rpx;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.entry-icon { font-size: 40rpx; }
+
+.entry-card.collect .entry-icon-wrap { background: linear-gradient(135deg, #e6fffa, #b2f5ea); }
+.entry-card.checkin .entry-icon-wrap { background: linear-gradient(135deg, #ebf8ff, #bee3f8); }
+.entry-card.attendance .entry-icon-wrap { background: linear-gradient(135deg, #f0fff4, #c6f6d5); }
+.entry-card.ai .entry-icon-wrap { background: linear-gradient(135deg, #faf5ff, #e9d8fd); }
+.entry-card.notice .entry-icon-wrap { background: linear-gradient(135deg, #fffaf0, #feebc8); }
+.entry-card.report .entry-icon-wrap { background: linear-gradient(135deg, #f0fff4, #9ae6b4); }
+
+.label { font-size: 26rpx; font-weight: 600; color: #2d3748; margin-top: 6rpx; }
+.sub { font-size: 20rpx; color: #a0aec0; }
+.unread-hint { color: #ed8936; }
+
+.badge {
+  position: absolute;
+  top: -8rpx; right: -8rpx;
+  min-width: 32rpx; height: 32rpx;
+  padding: 0 8rpx;
+  background: #f56565;
+  color: #fff;
+  font-size: 20rpx;
+  border-radius: 16rpx;
+  line-height: 32rpx;
+  text-align: center;
+  box-shadow: 0 2rpx 6rpx rgba(245,101,101,0.5);
+}
+
+/* ===== 底部 ===== */
+.footer {
+  padding: 40rpx 0 60rpx;
+  text-align: center;
+  color: #cbd5e0;
+  font-size: 22rpx;
 }
 </style>
