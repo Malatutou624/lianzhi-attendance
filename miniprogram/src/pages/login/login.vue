@@ -7,16 +7,6 @@
     </view>
 
     <view class="form-area">
-      <!-- 微信一键登录 -->
-      <button class="wx-btn" @click="wxLogin" open-type="getUserInfo">
-        <text class="wx-icon">💬</text>
-        微信一键登录
-      </button>
-
-      <view class="divider">
-        <text>或使用账号密码</text>
-      </view>
-
       <view class="input-group">
         <input v-model="username" class="input" placeholder="请输入账号" />
         <input v-model="password" class="input" placeholder="请输入密码" password />
@@ -37,10 +27,6 @@ import { ref } from 'vue'
 import { BASE_URL } from '@/utils/request'
 const username = ref('')
 const password = ref('')
-
-async function wxLogin() {
-  uni.showToast({ title: '请先用账号密码登录', icon: 'none', duration: 2000 })
-}
 
 function goRegister() {
   uni.showModal({
@@ -200,26 +186,6 @@ function pwdLogin() {
     background: #fff;
     border-radius: 24rpx;
     padding: 50rpx 40rpx;
-
-    .wx-btn {
-      background: #07c160;
-      color: #fff;
-      border-radius: 50rpx;
-      font-size: 30rpx;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24rpx 0;
-
-      .wx-icon { margin-right: 10rpx; }
-    }
-
-    .divider {
-      text-align: center;
-      margin: 30rpx 0;
-      color: #999;
-      font-size: 24rpx;
-    }
 
     .input-group {
       margin-bottom: 30rpx;

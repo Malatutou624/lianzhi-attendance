@@ -364,6 +364,7 @@ public class H5Controller {
             record.setLatitude(latitude);
             record.setDeviceInfo(deviceInfo);
             record.setStatus(status);
+            record.setSimilarity(new java.math.BigDecimal(match.similarity * 100).setScale(2, java.math.RoundingMode.HALF_UP));
             checkinService.save(record);
         } else {
             // 第二次打卡：更新记录（签退）
@@ -371,6 +372,7 @@ public class H5Controller {
             record.setSignOutTime(LocalDateTime.now());
             record.setSignOutPhoto(photoUrl);
             record.setStatus(status);
+            record.setSimilarity(new java.math.BigDecimal(match.similarity * 100).setScale(2, java.math.RoundingMode.HALF_UP));
             checkinService.updateById(record);
         }
 

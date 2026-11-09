@@ -33,7 +33,15 @@
           <el-tag>{{ row.checkinType === 'face' ? '人脸识别' : '拍照' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="similarity" label="相似度" width="90" />
+      <el-table-column label="相似度" width="110">
+        <template #default="{ row }">
+          <span v-if="row.similarity != null" class="sim-badge"
+                :class="row.similarity >= 85 ? 'ok' : (row.similarity >= 70 ? 'warn' : 'fail')">
+            {{ row.similarity }}%
+          </span>
+          <span v-else class="no-photo">—</span>
+        </template>
+      </el-table-column>
       <el-table-column label="照片" width="90">
         <template #default="{ row }">
           <el-image v-if="row.photoUrl" :src="row.photoUrl" style="width: 50px; height: 50px" fit="cover" :preview-src-list="[row.photoUrl]" preview-teleported />
@@ -136,4 +144,16 @@ onMounted(async () => {
 .toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
 .no-signout { color: #a0aec0; font-style: italic; }
 .no-photo { color: #cbd5e0; font-size: 12px; }
+
+.sim-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+.sim-badge.ok { background: #f0fff4; color: #38a169; border: 1px solid #c6f6d5; }
+.sim-badge.warn { background: #fffaf0; color: #dd6b20; border: 1px solid #feebc8; }
+.sim-badge.fail { background: #fff5f5; color: #e53e3e; border: 1px solid #fed7d7; }
 </style>

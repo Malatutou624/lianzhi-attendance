@@ -68,9 +68,6 @@
         <el-form-item label="手机号">
           <el-input v-model="form.phone" />
         </el-form-item>
-        <el-form-item label="身份证号">
-          <el-input v-model="form.idCard" />
-        </el-form-item>
         <el-form-item label="部门" prop="dept">
           <el-select v-model="form.dept" style="width: 100%" placeholder="请选择">
             <el-option v-for="d in deptOptions" :key="d" :label="d" :value="d" />
@@ -125,7 +122,7 @@ function statusTagType(s) {
 const dialogVisible = ref(false)
 const submitting = ref(false)
 const formRef = ref(null)
-const form = reactive({ id: null, empNo: '', name: '', gender: 1, phone: '', idCard: '', dept: '', position: '', venueId: null, status: 1 })
+const form = reactive({ id: null, empNo: '', name: '', gender: 1, phone: '', dept: '', position: '', venueId: null, status: 1 })
 const formRules = {
   empNo: [{ required: true, message: '请输入工号', trigger: 'blur' }],
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
@@ -135,7 +132,7 @@ const formRules = {
 }
 
 function resetForm() {
-  Object.assign(form, { id: null, empNo: '', name: '', gender: 1, phone: '', idCard: '', dept: '', position: '', venueId: null, status: 1 })
+  Object.assign(form, { id: null, empNo: '', name: '', gender: 1, phone: '', dept: '', position: '', venueId: null, status: 1 })
 }
 
 function onQuery() { query.current = 1; loadData() }
@@ -159,7 +156,7 @@ function handleEdit(row) {
   resetForm()
   Object.assign(form, {
     id: row.id, empNo: row.empNo, name: row.name, gender: row.gender,
-    phone: row.phone, idCard: row.idCard, dept: row.dept, position: row.position,
+    phone: row.phone, dept: row.dept, position: row.position,
     venueId: row.venueId, status: row.status,
   })
   dialogVisible.value = true
