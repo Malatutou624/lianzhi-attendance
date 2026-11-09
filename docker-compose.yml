@@ -84,11 +84,12 @@ services:
       - backend-uploads:/app/uploads     # 人脸照片持久化
       - backend-knowledge:/app/knowledge # 知识库文档持久化
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/employee/page || exit 1"]
+      # 用 bash /dev/tcp 测 8080 端口是否监听（只要 Spring Boot 起来就通，不依赖 HTTP 状态码）
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080' 2>/dev/null || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 40s
+      start_period: 30s
     # 后端启动慢（Maven 编译 + JVM 预热），给足够时间
     deploy:
       resources:
