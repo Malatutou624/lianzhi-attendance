@@ -1,0 +1,86 @@
+name: Deploy
+
+# CD 触发：CI 全部成功后自动部署 或 手动触发
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:    # 也可以手动在 GitHub Actions 页面点 Run workflow
+
+# 只允许一个部署并发，避免冲突
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Docker Compose 部署
+    # ====== 关键：跑在本机 Windows Docker Desktop 上 ======
+    # 一次性设置: GitHub Settings → Actions → Runners → New self-hosted runner → Windows
+    # runner 装好后会自动出现在列表，标签就是 "self-hosted"
+    runs-on: [self-hosted, Windows, docker]
+
+    steps:
+      - name: 📥 拉取最新代码
+        uses: actions/checkout@v4
+
+      - name: 🔑 注入 application.yml（含 API Key）
+        # application.yml 已被 gitignore（含真实 API Key 不能上 GitHub）
+        # 这里从 GitHub Secrets 里读出来重新生成
+        # Settings → Secrets and variables → Actions → New repository secret
+        #   名称: APPLICATION_YML   值: 把你本地完整的 application.yml 内容粘贴进去
+        # Windows PowerShell 默认 UTF-16，必须显式 UTF-8 写入
+        run: |
+          $ymlContent = @"
+${{ secrets.APPLICATION_YML }}
+"@
+          [System.IO.File]::WriteAllText(
+            "${{ github.workspace }}\server\src\main\resources\application.yml",
+            $ymlContent,
+            [System.Text.Encoding]::UTF8
+          )
+          Write-Host "✅ application.yml 已注入（大小: $($ymlContent.Length) 字符）"
+
+      - name: 🐳 Docker Compose 构建 + 启动
+        run: |
+          cd $env:GITHUB_WORKSPACE
+          docker compose up -d --build
+          Write-Host "✅ Docker Compose 已启动"
+          docker compose ps
+
+      - name: ⏳ 等待后端健康
+        run: |
+          Write-Host "等待后端容器 healthy..."
+          for ($i=0; $i -lt 30; $i++) {
+            $status = docker inspect --format='{{.State.Health.Status}}' lianzhi-backend 2>$null
+            if ($status -eq 'healthy') {
+              Write-Host "✅ 后端 healthy！耗时 $($i*2)s"
+              break
+            }
+            Start-Sleep -Seconds 2
+          }
+          docker compose ps
+
+      - name: 🧪 冒烟测试 —— 登录
+        run: |
+          try {
+            $login = Invoke-RestMethod -Uri "http://localhost:8082/auth/login" `
+              -Method POST -ContentType "application/json; charset=utf-8" `
+              -Body '{"username":"admin","password":"123456"}' -TimeoutSec 10
+            if ($login.code -eq 200) {
+              Write-Host "✅ 登录接口正常"
+            } else {
+              Write-Host "❌ 登录失败: $($login.msg)"
+              exit 1
+            }
+          } catch {
+            Write-Host "❌ 冒烟测试失败: $_"
+            exit 1
+          }
+
+      - name: 📊 打印容器状态
+        if: always()
+        run: |
+          Write-Host "========== 最终状态 =========="
+          docker compose ps
+          Write-Host ""
+          docker compose logs --tail 20 backend

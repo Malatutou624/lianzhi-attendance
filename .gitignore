@@ -32,3 +32,13 @@ server/knowledge/docs-out/node_modules/
 server/knowledge/docs-out/*.js
 server/knowledge/docs-out/package.json
 server/knowledge/docs-out/package-lock.json
+
+# ---------- 本地敏感配置（含 API Key，绝对不要推到 GitHub）----------
+server/src/main/resources/application.yml
+
+# ---------- 本地 Docker 临时脚本 ----------
+tmp-*.py
+tmp-*.js
+tmp-*.sh
+package-lock.json
+package.json
