@@ -25,9 +25,8 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./sql:/docker-entrypoint-initdb.d:ro   # 初始化 SQL（只在首次建库时执行）
+      - mysql-conf:/etc/mysql/conf.d           # 用 named volume 绕开 Windows bind mount 权限问题
     command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
       - --default-authentication-plugin=caching_sha2_password
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot2025"]
@@ -120,6 +119,8 @@ services:
 volumes:
   mysql-data:
     name: lianzhi-mysql-data
+  mysql-conf:
+    name: lianzhi-mysql-conf
   redis-data:
     name: lianzhi-redis-data
   backend-uploads:
