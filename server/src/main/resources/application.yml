@@ -7,7 +7,8 @@ spring:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
     # 数据库地址：本地 MySQL，库名 lianzhi_attendance
-    url: jdbc:mysql://localhost:3306/lianzhi_attendance?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    # characterEncoding=UTF-8 + connectionCollation=utf8mb4_unicode_ci 强制 utf8mb4，防止 utf8 被 MySQL 映射成 utf8mb3
+    url: jdbc:mysql://localhost:3306/lianzhi_attendance?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: Acx20050624
     druid:

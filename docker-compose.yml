@@ -64,8 +64,8 @@ services:
       redis:
         condition: service_healthy
     environment:
-      # ==== 数据库 ====
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/lianzhi_attendance?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      # ==== 数据库（强制 UTF-8 + utf8mb4，防止 MySQL Connector/J 的 characterEncoding=utf8 被映射成 utf8mb3/GBK）====
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/lianzhi_attendance?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root2025
       # ==== Redis ====
