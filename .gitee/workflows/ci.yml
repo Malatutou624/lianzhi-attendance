@@ -8,62 +8,35 @@ on:
 
 jobs:
   backend:
-    name: 后端构建 + 测试
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup JDK 17
+      - uses: actions/checkout@v3
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: maven
-
-      - name: Maven Test & Package
-        run: |
-          cd server
-          mvn clean package -DskipTests=false -B --no-transfer-progress
+      - name: Build & Test
+        run: cd server && mvn clean package -B --no-transfer-progress
         env:
           MAVEN_OPTS: -Xmx1g
 
   admin-web:
-    name: PC 管理端构建
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: npm
-          cache-dependency-path: admin-web/package-lock.json
-
-      - name: Install & Build
-        run: |
-          cd admin-web
-          npm ci --prefer-offline --no-audit --no-fund
-          npm run build
+      - name: Build
+        run: cd admin-web && npm ci --no-audit --no-fund && npm run build
 
   miniprogram:
-    name: 小程序构建
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: npm
-          cache-dependency-path: miniprogram/package-lock.json
-
-      - name: Install & Build
-        run: |
-          cd miniprogram
-          npm ci --prefer-offline --no-audit --no-fund
-          npm run build:mp-weixin
+      - name: Build WeChat
+        run: cd miniprogram && npm ci --no-audit --no-fund && npm run build:mp-weixin
