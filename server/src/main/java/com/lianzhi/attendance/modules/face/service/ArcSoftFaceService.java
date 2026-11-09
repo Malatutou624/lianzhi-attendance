@@ -104,8 +104,10 @@ public class ArcSoftFaceService {
             initialized = true;
             log.info("[ArcFace] ✅ 虹软 ArcFace SDK 3.0 初始化完成！matchThreshold={}", matchThreshold);
 
-        } catch (Exception e) {
-            log.error("[ArcFace] 初始化异常", e);
+        } catch (Throwable t) {
+            // 注意：UnsatisfiedLinkError 是 Error 不是 Exception（Linux 容器没有 .so）
+            // 用 Throwable 兜底，让 Bean 仍然创建成功但 initialized=false → fallback pHash
+            log.warn("[ArcFace] 初始化失败（可能是非 Windows 环境无 .so），fallback pHash: {}", t.getMessage());
         }
     }
 

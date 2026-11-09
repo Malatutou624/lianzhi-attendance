@@ -1,0 +1,127 @@
+# =====================================================================
+# 联智考勤系统 - Docker Compose 编排
+# 四容器：MySQL 8.0 + Redis 7 + Spring Boot 后端 + Vue Admin-Web (Nginx)
+#
+# 启动：docker compose up -d --build
+# 查看：docker compose ps
+# 日志：docker compose logs -f backend
+# 停止：docker compose down
+# =====================================================================
+
+name: lianzhi-attendance
+
+services:
+  # ========== MySQL 8.0 ==========
+  mysql:
+    image: mysql:8.0
+    container_name: lianzhi-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root2025
+      MYSQL_DATABASE: lianzhi_attendance
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"          # 主机 3307 → 容器 3306（避免冲突本机 MySQL）
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d:ro   # 初始化 SQL（只在首次建库时执行）
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=caching_sha2_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot2025"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ========== Redis 7 ==========
+  redis:
+    image: redis:7-alpine
+    container_name: lianzhi-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"          # 主机 6380 → 容器 6379
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========== Spring Boot 后端 ==========
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lianzhi-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # ==== 数据库 ====
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/lianzhi_attendance?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root2025
+      # ==== Redis ====
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      # ==== 路径（Linux 容器路径，覆盖 application.yml 里的 Windows 绝对路径）====
+      LIANZHI_UPLOAD_DIR: /app/uploads
+      LIANZHI_ARCFACE_LIB_DIR: /app/arcsoft
+      LIANZHI_ARCFACE_ACTIVE_DIR: /app/arcsoft
+      LIANZHI_KNOWLEDGE_DIR: /app/knowledge
+      TZ: Asia/Shanghai
+    ports:
+      - "8082:8080"          # 主机 8082 → 容器 8080（避开本地 IDEA 的 8080）
+    volumes:
+      - backend-uploads:/app/uploads     # 人脸照片持久化
+      - backend-knowledge:/app/knowledge # 知识库文档持久化
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/employee/page || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    # 后端启动慢（Maven 编译 + JVM 预热），给足够时间
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 256m
+
+  # ========== Admin-Web 前端（Nginx 托管） ==========
+  admin-web:
+    build:
+      context: ./admin-web
+      dockerfile: Dockerfile
+    container_name: lianzhi-admin-web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8081:80"            # 主机 8081 → 容器 80
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+# ========== 命名卷（持久化数据） ==========
+volumes:
+  mysql-data:
+    name: lianzhi-mysql-data
+  redis-data:
+    name: lianzhi-redis-data
+  backend-uploads:
+    name: lianzhi-backend-uploads
+  backend-knowledge:
+    name: lianzhi-backend-knowledge

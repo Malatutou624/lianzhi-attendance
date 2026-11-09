@@ -1,0 +1,39 @@
+# ---- Git ----
+.git
+.gitignore
+.github
+.gitee
+
+# ---- IDE ----
+.idea
+*.iml
+.vscode
+*.code-workspace
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Maven ----
+server/target
+server/.mvn
+mvnw
+mvnw.cmd
+
+# ---- Node ----
+admin-web/node_modules
+admin-web/dist
+admin-web/.vite
+miniprogram/node_modules
+miniprogram/dist
+
+# ---- 本地运行产物 ----
+server/uploads
+server/knowledge/docs-out
+*.log
+*.tmp
+
+# ---- Docker 自身 ----
+docker-compose.yml
+Dockerfile
+.dockerignore
